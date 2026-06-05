@@ -60,6 +60,7 @@ powershell -ExecutionPolicy Bypass -File scripts/Disable-UnnecessaryServices.ps1
 | `hpLHAgent` / `hpLHWatchdog` | HP Insights telemetry agent |
 | `Intel Analytics Service` | Intel telemetry |
 | `dptftcs` | Intel Dynamic Tuning Technology telemetry |
+| `ipfsvc` | Intel Innovation Platform Framework — spawns `ipf_helper.exe`, known CPU consumer |
 | `W3SVC` | IIS web server — unusual to need on a workstation |
 
 ### Startup items the script removes

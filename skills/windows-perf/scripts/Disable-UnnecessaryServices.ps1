@@ -73,7 +73,8 @@ $telemetryServices = @(
     @{ Name = 'HpTouchpointAnalyticsService'; Reason = 'HP Touchpoint analytics' },
     @{ Name = 'hpLHAgent';                    Reason = 'HP Insights telemetry agent' },
     @{ Name = 'hpLHWatchdog';                 Reason = 'HP Insights watchdog' },
-    @{ Name = 'dptftcs';                      Reason = 'Intel Dynamic Tuning Technology telemetry' }
+    @{ Name = 'dptftcs';                      Reason = 'Intel Dynamic Tuning Technology telemetry' },
+    @{ Name = 'ipfsvc';                       Reason = 'Intel Innovation Platform Framework - spawns ipf_helper.exe, known CPU consumer' }
 )
 foreach ($s in $telemetryServices) { Disable-ServiceIfRunning $s.Name $s.Reason }
 
