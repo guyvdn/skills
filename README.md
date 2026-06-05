@@ -1,6 +1,6 @@
 # guyvdn/skills
 
-[![skills.sh](https://skills.sh/b/guyvdn/skills)](https://skills.sh/guyvdn/skills)
+[![skills.sh](https://skills.sh/b/guyvdn/skills?v=1)](https://skills.sh/guyvdn/skills)
 
 A collection of AI agent skills for developer workflows on Windows.
 
