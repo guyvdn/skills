@@ -15,7 +15,7 @@ npx skills add guyvdn/skills
 | Skill | Description |
 |---|---|
 | [windows-perf](skills/windows-perf/) | Diagnose CPU spikes, disable telemetry services and unnecessary startup items on Windows |
-| [windows-defender-dev](skills/windows-defender-dev/) | Configure Windows Defender path and process exclusions for a Windows developer machine — covers Visual Studio 2022 (v17 + v18), Visual Studio Code, JetBrains Rider, .NET SDK, NuGet, MSBuild, SQL Server Management Studio, and user-supplied project folders. Idempotent, safe to re-run. |
+| [windows-defender-dev](skills/windows-defender-dev/) | Configure Windows Defender path and process exclusions for a Windows developer machine — covers Visual Studio 2022 (v17) and 2026 (v18), Visual Studio Code, JetBrains Rider, .NET SDK, NuGet, MSBuild, SQL Server Management Studio, and user-supplied project folders. Idempotent, safe to re-run. |
 
 ## Usage
 

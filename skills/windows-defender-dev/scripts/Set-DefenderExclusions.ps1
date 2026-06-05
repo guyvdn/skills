@@ -6,8 +6,8 @@
 .DESCRIPTION
     Idempotent — safe to run multiple times. Skips exclusions already present.
     Path comparison is case-insensitive to match Windows filesystem behaviour.
-    Covers: VS 2022 (v17 + v18 Insiders), VS Code, .NET SDK, NuGet, MSBuild, JetBrains Rider,
-    SQL Server Management Studio, and one or more user-supplied project folders.
+    Covers: Visual Studio 2022 (v17) and 2026 (v18), VS Code, .NET SDK, NuGet, MSBuild,
+    JetBrains Rider, SQL Server Management Studio, and one or more user-supplied project folders.
 
 .PARAMETER ProjectFolders
     One or more paths to your source/project folders (e.g. D:\projects, D:\source).
@@ -56,14 +56,14 @@ $pathExclusions = @(
     'C:\ProgramData\Microsoft\NetFramework',
     'C:\ProgramData\Microsoft Visual Studio',
 
-    # Program Files (x64)
+    # Program Files (x64) — parent path covers VS 2022 (\2022\) and VS 2026 (\2026\)
     'C:\Program Files\Microsoft Visual Studio',
     'C:\Program Files\Microsoft VS Code',
     'C:\Program Files\dotnet',
     'C:\Program Files\Microsoft SDKs',
     'C:\Program Files\Microsoft SQL Server',
 
-    # Program Files (x86)
+    # Program Files (x86) — VS 2019 and earlier used an x86 installer host
     'C:\Program Files (x86)\Microsoft Visual Studio',
     'C:\Program Files (x86)\dotnet',
     'C:\Program Files (x86)\Microsoft SDKs',

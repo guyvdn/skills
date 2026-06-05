@@ -44,8 +44,8 @@ $p.ExclusionProcess
 | Path | Notes |
 |---|---|
 | User-supplied project folders | Provided interactively |
-| `C:\Program Files\Microsoft Visual Studio` | Covers v17 and v18/Insiders |
-| `C:\Program Files (x86)\Microsoft Visual Studio` | x86 install location |
+| `C:\Program Files\Microsoft Visual Studio` | Covers VS 2022 (v17, `\2022\`) and VS 2026 (v18, `\2026\`) |
+| `C:\Program Files (x86)\Microsoft Visual Studio` | VS 2019 and earlier (x86 installer host) |
 | `C:\Program Files\Microsoft VS Code` | VS Code system-wide install |
 | `%LOCALAPPDATA%\Programs\Microsoft VS Code` | VS Code per-user install |
 | `%USERPROFILE%\.vscode\extensions` | VS Code extensions — most-scanned VS Code path |
@@ -94,6 +94,6 @@ $p.ExclusionProcess
 ## Gotchas
 
 - Requires an **elevated (admin) PowerShell** session.
-- VS 2022 v18 (Insiders) installs under `\18\` but the parent path `C:\Program Files\Microsoft Visual Studio` covers both v17 and v18.
+- Visual Studio 2022 (v17) installs under `\2022\` and Visual Studio 2026 (v18) installs under `\2026\` — both are covered by excluding the parent path `C:\Program Files\Microsoft Visual Studio`.
 - All JetBrains Rider per-version folders (`Rider2024.1`, `Rider2024.2`, etc.) are covered by excluding the parent `%LOCALAPPDATA%\JetBrains`.
 - `VBCSCompiler.exe` is the single biggest win — it stays resident between builds and Defender hammers it on every recompile.
