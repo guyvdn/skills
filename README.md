@@ -1,8 +1,8 @@
 # guyvdn/skills
 
-[![skills.sh](https://skills.sh/b/guyvdn/skills?v=2)](https://skills.sh/guyvdn/skills)
+[![skills.sh](https://skills.sh/b/guyvdn/skills?v=3)](https://skills.sh/guyvdn/skills)
 
-A collection of Claude Code slash commands for developer workflows on Windows.
+A collection of AI agent skills for developer workflows on Windows.
 
 ## Install
 
@@ -10,39 +10,31 @@ A collection of Claude Code slash commands for developer workflows on Windows.
 npx skills add guyvdn/skills
 ```
 
-This installs the commands to `~/.claude/commands/` so they're available in every project.
+## Skills
 
-## Commands
-
-| Command | Description |
+| Skill | Description |
 |---|---|
-| `/windows-perf` | Diagnose CPU spikes, disable telemetry services and unnecessary startup items on Windows |
-| `/windows-defender-dev` | Configure Windows Defender path and process exclusions for a Windows developer machine — covers Visual Studio 2022 (v17) and 2026 (v18), VS Code, JetBrains Rider, .NET SDK, NuGet, MSBuild, SSMS, and user-supplied project folders |
+| [windows-perf](skills/windows-perf/) | Diagnose CPU spikes, disable telemetry services and unnecessary startup items on Windows |
+| [windows-defender-dev](skills/windows-defender-dev/) | Configure Windows Defender path and process exclusions for a Windows developer machine — covers Visual Studio 2022 (v17) and 2026 (v18), VS Code, JetBrains Rider, .NET SDK, NuGet, MSBuild, SSMS, and user-supplied project folders. Idempotent, safe to re-run. |
 
 ## Usage
 
-After installing, use the slash commands in Claude Code:
+After installing, ask your AI agent:
+- *"My CPU keeps spiking, can you have a look?"*
+- *"Set up Windows Defender exclusions for my dev machine (Visual Studio, VS Code, Rider, SSMS)"*
+- *"Tune my Windows machine for development"*
 
-```
-/windows-perf
-/windows-defender-dev
-```
+## Scripts
 
-Or ask your AI agent:
-- *"My CPU keeps spiking, can you have a look?"* → `/windows-perf`
-- *"Set up Windows Defender exclusions for my dev machine"* → `/windows-defender-dev`
-
-## Standalone Scripts
-
-The PowerShell scripts can also be run directly without AI assistance (requires admin). Run from the **repo root**:
+Skills include standalone PowerShell scripts (requires admin). Run from the **repo root**:
 
 ```powershell
 # Service & startup cleanup
-powershell -ExecutionPolicy Bypass -File scripts/Disable-UnnecessaryServices.ps1
+powershell -ExecutionPolicy Bypass -File skills/windows-perf/scripts/Disable-UnnecessaryServices.ps1
 
 # Defender exclusions (interactive)
-powershell -ExecutionPolicy Bypass -File scripts/Set-DefenderExclusions.ps1
+powershell -ExecutionPolicy Bypass -File skills/windows-defender-dev/scripts/Set-DefenderExclusions.ps1
 
 # Defender exclusions (non-interactive)
-powershell -ExecutionPolicy Bypass -File scripts/Set-DefenderExclusions.ps1 -ProjectFolders "D:\projects","D:\source"
+powershell -ExecutionPolicy Bypass -File skills/windows-defender-dev/scripts/Set-DefenderExclusions.ps1 -ProjectFolders "D:\projects","D:\source"
 ```
