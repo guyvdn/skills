@@ -16,6 +16,7 @@ npx skills add guyvdn/skills
 |---|---|
 | [windows-perf](skills/windows-perf/) | Diagnose CPU spikes, disable telemetry services and unnecessary startup items on Windows |
 | [windows-defender-dev](skills/windows-defender-dev/) | Configure Windows Defender path and process exclusions for a Windows developer machine — covers Visual Studio 2022 (v17) and 2026 (v18), VS Code, JetBrains Rider, .NET SDK, NuGet, MSBuild, SSMS, and user-supplied project folders. Idempotent, safe to re-run. |
+| [reveal-md](skills/reveal-md/) | Create, run, and export reveal-md presentations. Use when the user wants to create a new slide deck, serve a presentation locally, or export one to PDF. |
 
 ## Usage
 
@@ -23,6 +24,9 @@ After installing, ask your AI agent:
 - *"My CPU keeps spiking, can you have a look?"*
 - *"Set up Windows Defender exclusions for my dev machine (Visual Studio, VS Code, Rider, SSMS)"*
 - *"Tune my Windows machine for development"*
+- *"Create a reveal-md presentation about microservices"*
+- *"Serve my slides.md locally"*
+- *"Export my presentation to PDF"*
 
 ## Scripts
 
