@@ -13,6 +13,12 @@ Configure Windows Defender to stop scanning build output, compiler processes, an
 Before applying, ask the user:
 > "What are the paths to your project/source folders? (e.g. D:\source, D:\projects)"
 
+> **Skip folders that live on a Dev Drive.** A ReFS Dev Drive already gets Microsoft Defender
+> *performance mode* (async scanning), which is faster than nothing and still scans the files.
+> A path exclusion blocks scanning altogether and gains almost nothing on top. Check with
+> `Get-Volume | Where-Object FileSystemType -eq 'ReFS'` — see the
+> [windows-dev-drive](../windows-dev-drive/) skill. Tool paths on `C:` (below) are still worth excluding.
+
 ## Step 2 — Run the script
 
 Requires admin PowerShell. Interactive (prompts for folders):
@@ -24,10 +30,14 @@ powershell -ExecutionPolicy Bypass -File scripts/Set-DefenderExclusions.ps1
 Or pass folders directly (non-interactive):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/Set-DefenderExclusions.ps1 -ProjectFolders "D:\projects","D:\source"
+powershell -ExecutionPolicy Bypass -Command "& './scripts/Set-DefenderExclusions.ps1' -ProjectFolders 'D:\projects','D:\source'"
 ```
 
 The script is idempotent — safe to re-run, skips already-present exclusions.
+
+> `-ProjectFolders` takes an array, so it needs `-Command` rather than `-File`. With
+> `powershell -File`, `-ProjectFolders "D:\a","D:\b"` binds as a **single** string with the
+> quotes embedded, and you get one bogus exclusion path instead of two.
 
 ## Step 3 — Verify
 
