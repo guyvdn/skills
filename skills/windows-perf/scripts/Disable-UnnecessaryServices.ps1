@@ -8,9 +8,19 @@
     Idempotent — safe to run multiple times. Skips services that are already
     disabled and startup entries that are already removed.
 
+.PARAMETER IncludeIIS
+    Also disable W3SVC (IIS). Off by default: plenty of developer machines host
+    sites on local IIS, and a workstation that never uses it pays almost nothing
+    for an idle W3SVC. Opt in only when you know IIS is not in use.
+
 .EXAMPLE
     .\Disable-UnnecessaryServices.ps1
+
+.EXAMPLE
+    .\Disable-UnnecessaryServices.ps1 -IncludeIIS
 #>
+
+param([switch]$IncludeIIS)
 
 function Disable-ServiceIfRunning {
     param([string]$Name, [string]$Reason)
@@ -73,21 +83,46 @@ $telemetryServices = @(
     @{ Name = 'HpTouchpointAnalyticsService'; Reason = 'HP Touchpoint analytics' },
     @{ Name = 'hpLHAgent';                    Reason = 'HP Insights telemetry agent' },
     @{ Name = 'hpLHWatchdog';                 Reason = 'HP Insights watchdog' },
-    @{ Name = 'dptftcs';                      Reason = 'Intel Dynamic Tuning Technology telemetry' },
-    @{ Name = 'ipfsvc';                       Reason = 'Intel Innovation Platform Framework - spawns ipf_helper.exe, known CPU consumer' }
+    @{ Name = 'dptftcs';                      Reason = 'Intel Dynamic Tuning Technology TELEMETRY service - the display name says Telemetry; the tuning itself lives elsewhere' }
 )
 foreach ($s in $telemetryServices) { Disable-ServiceIfRunning $s.Name $s.Reason }
 
 # Intel Analytics: service name varies across driver versions — resolve by DisplayName to be safe
 Disable-ServiceByDisplayName '*Intel*Analytics*' 'Intel telemetry'
 
+# NOT disabled: ipfsvc (Intel Innovation Platform Framework).
+#
+# Earlier versions of this script disabled it as "telemetry, a known CPU
+# consumer". Both halves were wrong. Its display name is "Intel(R) Innovation
+# Platform Framework Service" — no telemetry in it — and on modern Intel mobile
+# parts IPF is the dynamic power and thermal manager: it trims sustained power
+# limits so the chassis does not sit hot. Measured over 3 minutes on a 13th-gen
+# P-series laptop, ipf_helper.exe and ipf_uf.exe both held 0% CPU.
+#
+# Disabling it does not save CPU and removes dynamic thermal management, which
+# is the opposite of what someone chasing a constantly-spinning fan wants.
+Write-Host ""
+Write-Host "=== Deliberately left running ==="
+$ipf = Get-Service -Name 'ipfsvc' -ErrorAction SilentlyContinue
+if ($ipf) {
+    Write-Host "  ipfsvc ($($ipf.Status), $($ipf.StartType)) - Intel dynamic power/thermal manager, not telemetry"
+    if ($ipf.StartType -eq 'Disabled') {
+        Write-Host "       -> currently DISABLED. If an older run of this script did that, re-enable it:"
+        Write-Host "          Set-Service -Name ipfsvc -StartupType Automatic; Start-Service ipfsvc"
+    }
+}
+
 # --- 3. Services unused on most dev machines ---
 Write-Host ""
 Write-Host "=== Services typically unused on developer machines ==="
-$unusedServices = @(
-    @{ Name = 'W3SVC'; Reason = 'IIS web server — unusual to need on a workstation' }
-)
-foreach ($s in $unusedServices) { Disable-ServiceIfRunning $s.Name $s.Reason }
+if ($IncludeIIS) {
+    Disable-ServiceIfRunning 'W3SVC' 'IIS web server — disabled because -IncludeIIS was passed'
+} else {
+    $iis = Get-Service -Name 'W3SVC' -ErrorAction SilentlyContinue
+    if ($iis -and $iis.StartType -ne 'Disabled') {
+        Write-Host "  [skipped] W3SVC (IIS) is $($iis.Status). Pass -IncludeIIS to disable it."
+    }
+}
 
 # --- 4. Startup items (HKCU + HKLM) ---
 Write-Host ""
