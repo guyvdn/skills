@@ -20,6 +20,7 @@ npx skills add guyvdn/skills
 | [windows-display-dimming](skills/windows-display-dimming/) | Diagnose and stop a laptop screen dimming by itself — ambient-light adaptive brightness, content-adaptive dimming (Intel DPST / AMD Vari-Bright / CABC), battery-saver dimming, plus a boot task so the fix survives Windows feature updates. |
 | [agent-browser-cleanup](skills/agent-browser-cleanup/) | Find and remove Chrome trees leaked by `agent-browser` (hundreds of processes, gigabytes of RAM), and stop them accumulating — covers why `close --all` misses them and why "parent is dead" is the wrong orphan test. |
 | [reveal-md](skills/reveal-md/) | Create, run, and export reveal-md presentations. Use when the user wants to create a new slide deck, serve a presentation locally, or export one to PDF. |
+| [claude-code-sessions](skills/claude-code-sessions/) | Identify the Claude Code sessions running on this machine — map each one's friendly name to its session id, working directory and pid. Covers why the name is the address and the id usually is not, and why a live pid alone is not a live session. |
 
 ## Usage
 
@@ -38,6 +39,10 @@ After installing, ask your AI agent:
 - *"Create a reveal-md presentation about microservices"*
 - *"Serve my slides.md locally"*
 - *"Export my presentation to PDF"*
+- *"Which Claude session am I in?"*
+- *"What other Claude sessions are running?"*
+- *"Tell the session in D:\projects\foo what I just changed"*
+- *"What is the session id for this window?"*
 
 ## Scripts
 
@@ -72,4 +77,10 @@ powershell -ExecutionPolicy Bypass -File skills/windows-display-dimming/scripts/
 
 # Turn off auto-dimming now, and keep it off across feature updates
 powershell -ExecutionPolicy Bypass -File skills/windows-display-dimming/scripts/Disable-AdaptiveDimming.ps1 -RestartAdapter -InstallTask
+
+# List the Claude Code sessions running on this machine (read-only, no admin)
+powershell -ExecutionPolicy Bypass -File skills/claude-code-sessions/scripts/Get-ClaudeSessions.ps1
+
+# ...as JSON, for a script or an agent to consume
+powershell -ExecutionPolicy Bypass -File skills/claude-code-sessions/scripts/Get-ClaudeSessions.ps1 -Json
 ```
