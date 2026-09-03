@@ -59,6 +59,9 @@ powershell -ExecutionPolicy Bypass -File skills/windows-perf/scripts/Disable-Unn
 # Orphaned agent-browser cleanup (no admin needed; -DryRun to preview)
 powershell -ExecutionPolicy Bypass -File skills/agent-browser-cleanup/scripts/Remove-OrphanedAgentBrowsers.ps1 -DryRun
 
+# Chrome on a fixed CDP port for `agent-browser --cdp 9222` (no admin needed; -Stop to shut down)
+powershell -ExecutionPolicy Bypass -File skills/agent-browser-cleanup/scripts/Start-AgentBrowserCdp.ps1
+
 # Dev Drive audit (read-only)
 powershell -ExecutionPolicy Bypass -File skills/windows-dev-drive/scripts/Test-DevDrive.ps1
 

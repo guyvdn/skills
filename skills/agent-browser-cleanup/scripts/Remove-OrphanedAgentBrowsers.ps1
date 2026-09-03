@@ -27,6 +27,14 @@
 .PARAMETER KeepTempProfiles
     Skip cleanup of stale %TEMP%\agent-browser-chrome-* profile directories.
 
+.PARAMETER IncludeExternalProfiles
+    Also consider browsers that were NOT launched into a
+    %TEMP%\agent-browser-chrome-* profile. By default those are spared: a
+    browser pre-launched for --cdp / --auto-connect always predates the daemon
+    that later attaches to it, so the orphan rule below would otherwise reap the
+    very browser the session is using. Only pass this when you know no
+    pre-launched browser is in play.
+
 .PARAMETER DryRun
     Report what would be removed; remove nothing.
 
@@ -41,6 +49,7 @@
 param(
     [int]$MinAgeMinutes = 5,
     [switch]$KeepTempProfiles,
+    [switch]$IncludeExternalProfiles,
     [switch]$DryRun
 )
 
@@ -69,8 +78,25 @@ $cutoff = if ($daemons.Count -eq 0) { $now }
 $abPids = @($abChrome | ForEach-Object { [int]$_.ProcessId })
 $roots  = @($abChrome | Where-Object { $abPids -notcontains [int]$_.ParentProcessId })
 
+# A browser pre-launched for --cdp / --auto-connect is started by hand, before
+# any daemon exists, so the "predates the earliest live daemon" rule below flags
+# it every time. Reaping it would kill the browser the session is working in.
+# Only agent-browser's own launches land in %TEMP%\agent-browser-chrome-*, so
+# that profile shape is what marks a tree as fair game.
+$tempProfilePrefix = Join-Path $env:TEMP 'agent-browser-chrome-'
+function Test-AgentBrowserProfile {
+    param($Proc)
+    if (-not $Proc.CommandLine) { return $false }
+    if ($Proc.CommandLine -notmatch '--user-data-dir="?([^"]+?)"?(?:\s|$)') { return $false }
+    return $Matches[1].StartsWith($tempProfilePrefix, 'OrdinalIgnoreCase')
+}
+
+$reapable = if ($IncludeExternalProfiles) { $roots }
+            else { @($roots | Where-Object { Test-AgentBrowserProfile -Proc $_ }) }
+$spared = $roots.Count - @($reapable).Count
+
 $orphanRoots = @(
-    $roots | Where-Object {
+    $reapable | Where-Object {
         $_.CreationDate -and
         ($now - $_.CreationDate).TotalMinutes -ge $MinAgeMinutes -and
         $_.CreationDate -lt $cutoff
@@ -79,6 +105,9 @@ $orphanRoots = @(
 
 if ($abChrome.Count -gt 0) {
     Write-Host ("  browser trees    : {0} ({1} orphaned)" -f $roots.Count, $orphanRoots.Count)
+    if ($spared -gt 0) {
+        Write-Host ("  spared           : {0} pre-launched (--cdp/--auto-connect); -IncludeExternalProfiles to reap" -f $spared)
+    }
 }
 
 $doomed = @()

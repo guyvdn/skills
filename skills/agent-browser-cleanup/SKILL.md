@@ -95,14 +95,20 @@ An elevated shell cannot hand `agent-browser` a browser it can track, so do not 
 launch one. Start Chrome yourself and attach:
 
 ```powershell
-$exe = (Get-ChildItem "$env:USERPROFILE\.agent-browser\browsers\*\chrome.exe" | Select-Object -First 1).FullName
-$udd = "$env:LOCALAPPDATA\agent-browser-cdp-profile"
-New-Item -ItemType Directory -Force $udd | Out-Null
-Start-Process $exe -ArgumentList "--headless=new","--remote-debugging-port=9222",
-    "--user-data-dir=`"$udd`"","--no-first-run","--no-default-browser-check","about:blank" -WindowStyle Hidden
-# wait for the endpoint before the first command
-curl.exe -s http://127.0.0.1:9222/json/version
+powershell -ExecutionPolicy Bypass -File scripts/Start-AgentBrowserCdp.ps1
+# -Headed to watch it, -Port to move off 9222, -Force if the profile is locked,
+# -Stop to shut it down
 ```
+
+Idempotent: if the port already answers it reuses that browser and launches nothing.
+It picks the newest Chrome under `~/.agent-browser/browsers` (then puppeteer's cache,
+then a system install) and puts the profile in `%LOCALAPPDATA%`, deliberately outside
+`%TEMP%` so the cleanup script's stale-profile sweep cannot delete it.
+
+It also **polls the DevTools endpoint rather than watching the process it started** —
+under de-elevation that process is gone within milliseconds while the real browser is
+still coming up, so the process handle is worthless as a readiness signal. This is the
+same trap `agent-browser` itself falls into.
 
 Then every call gets `--cdp`, and no pipes:
 
@@ -120,8 +126,8 @@ every subsequent command.
 running Chrome, which is nicer when you can tolerate the user's own browser and its
 auth state. `--cdp` on a dedicated profile is the predictable choice for automation.
 
-A pre-launched browser is not reaped by the cleanup script and does not die with the
-session — close it when done, or leave it as the working setup and say so.
+A pre-launched browser does not die with the session — close it when done
+(`-Stop`), or leave it as the working setup and say so.
 
 ## Cleaning up leaked trees
 
@@ -161,6 +167,15 @@ there is no way to tell which one that daemon actually holds.
 
 Match browsers by **executable path** under `~/.agent-browser`, never by process name.
 A bare `chrome` name match also hits the user's real browser.
+
+One more exclusion is needed once you pre-launch for `--cdp`. That browser is started
+by hand *before* any daemon exists, so the rule above flags it every single time — and
+reaping it kills the browser the session is working in. It also uses the same
+`~/.agent-browser` Chrome, so the executable-path filter does not separate it either.
+What does separate it is the profile: only `agent-browser`'s own launches land in
+`%TEMP%\agent-browser-chrome-*`, so the script treats that profile shape as the only
+fair game and spares everything else, reporting `spared : N pre-launched`.
+`-IncludeExternalProfiles` opts out when you know no pre-launched browser is in play.
 
 ### The script will not reap a cause-1 leak
 
@@ -250,4 +265,8 @@ launch race entirely, so it is worth having even when elevation is not the probl
   reduce its latency.
 - **Verify a reap with a negative test too.** Start a session, confirm the script
   leaves it alone, *then* kill the daemon and confirm it reaps. A cleanup that passes
-  only the positive test may be killing live sessions.
+  only the positive test may be killing live sessions. This is not hypothetical: it is
+  how the pre-launched-browser exclusion above was found, on a reaper that had passed
+  its positive test for months. With a pre-launched browser up, the pair to run is
+  `-DryRun -MinAgeMinutes 0` (must report it spared) and the same with
+  `-IncludeExternalProfiles` (must report it orphaned).
