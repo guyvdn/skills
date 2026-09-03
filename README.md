@@ -18,7 +18,7 @@ npx skills add guyvdn/skills
 | [windows-defender-dev](skills/windows-defender-dev/) | Configure Windows Defender path and process exclusions for a Windows developer machine — covers Visual Studio 2022 (v17) and 2026 (v18), VS Code, JetBrains Rider, .NET SDK, NuGet, MSBuild, SSMS, and user-supplied project folders. Idempotent, safe to re-run. |
 | [windows-dev-drive](skills/windows-dev-drive/) | Set up, audit and tune a Windows Dev Drive — ReFS/VHDX creation, trust, Microsoft Defender performance mode, filter allow lists, and redirecting NuGet/npm/pip/cargo/Gradle/Maven package caches onto it. |
 | [windows-display-dimming](skills/windows-display-dimming/) | Diagnose and stop a laptop screen dimming by itself — ambient-light adaptive brightness, content-adaptive dimming (Intel DPST / AMD Vari-Bright / CABC), battery-saver dimming, plus a boot task so the fix survives Windows feature updates. |
-| [agent-browser-cleanup](skills/agent-browser-cleanup/) | Find and remove Chrome trees leaked by `agent-browser` (hundreds of processes, gigabytes of RAM), and stop them accumulating — covers why `close --all` misses them and why "parent is dead" is the wrong orphan test. |
+| [agent-browser-cleanup](skills/agent-browser-cleanup/) | Get `agent-browser` launching again when every command dies with "Chrome exited early (exit code: 0)", and remove the Chrome trees it leaks (hundreds of processes, gigabytes of RAM) — covers the elevated-shell cause that reinstalls and Defender exclusions cannot fix, why `close --all` misses the leak, and why "parent is dead" is the wrong orphan test. |
 | [reveal-md](skills/reveal-md/) | Create, run, and export reveal-md presentations. Use when the user wants to create a new slide deck, serve a presentation locally, or export one to PDF. |
 | [claude-code-sessions](skills/claude-code-sessions/) | Identify the Claude Code sessions running on this machine — map each one's friendly name to its session id, working directory and pid. Covers why the name is the address and the id usually is not, and why a live pid alone is not a live session. |
 
@@ -36,6 +36,7 @@ After installing, ask your AI agent:
 - *"Disable dynamic/adaptive brightness on my laptop"*
 - *"Something left hundreds of chrome.exe processes running"*
 - *"agent-browser said it closed everything but the browsers are still there"*
+- *"agent-browser can't launch Chrome — it says Chrome exited early without writing DevToolsActivePort"*
 - *"Create a reveal-md presentation about microservices"*
 - *"Serve my slides.md locally"*
 - *"Export my presentation to PDF"*
