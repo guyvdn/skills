@@ -1,0 +1,39 @@
+{
+  "title": "Weekly plan",
+  "pages": 52,
+  "line_gap": 24,
+  "page_numbers": true,
+  "blocks": [
+    {
+      "type": "header",
+      "title": "WEEK",
+      "fields": [
+        { "label": "Of", "flex": 2 },
+        { "label": "Focus", "flex": 3 }
+      ]
+    },
+    {
+      "type": "row",
+      "height": 132,
+      "columns": [
+        {
+          "width": 0.5,
+          "blocks": [
+            { "type": "section", "title": "Must land", "style": "checks", "fill": true }
+          ]
+        },
+        {
+          "width": 0.5,
+          "blocks": [
+            { "type": "section", "title": "If there is time", "style": "checks", "fill": true }
+          ]
+        }
+      ]
+    },
+    { "type": "section", "title": "Mon", "style": "lines", "lines": 2 },
+    { "type": "section", "title": "Tue", "style": "lines", "lines": 2 },
+    { "type": "section", "title": "Wed", "style": "lines", "lines": 2 },
+    { "type": "section", "title": "Thu", "style": "lines", "lines": 2 },
+    { "type": "section", "title": "Fri", "style": "lines", "lines": 2 }
+  ]
+}

@@ -22,6 +22,7 @@ npx skills add guyvdn/skills
 | [reveal-md](skills/reveal-md/) | Create, run, and export reveal-md presentations. Use when the user wants to create a new slide deck, serve a presentation locally, or export one to PDF. |
 | [interactive-reveal-deck](skills/interactive-reveal-deck/) | Build a presentation as a reveal.js deck with a designed interface and interactive demo panels instead of static bullets — per-part accent colours, a chapter rail, a jump-to-slide palette, an annotation layer, and widgets the presenter drives from the clicker. Ships the theme, the code-window tokenizer (C#, JSON, TS), six widget patterns, a scaffold script and a layout verifier. |
 | [claude-code-sessions](skills/claude-code-sessions/) | Identify the Claude Code sessions running on this machine — map each one's friendly name to its session id, working directory and pid. Covers why the name is the address and the id usually is not, and why a live pid alone is not a live session. |
+| [remarkable](skills/remarkable/) | Read, transcribe and summarize handwritten notebooks from a reMarkable tablet — lists the tablet over USB (10.11.99.1) or the cloud (rmapi), exports a notebook to PDF, rasterises the pages for vision OCR, and writes a transcript plus a summary of decisions, actions and unanswered questions. Includes the transcription honesty rules and why a VPN makes a plugged-in tablet unreachable. |
 
 ## Usage
 
@@ -50,6 +51,12 @@ After installing, ask your AI agent:
 - *"What other Claude sessions are running?"*
 - *"Tell the session in D:\projects\foo what I just changed"*
 - *"What is the session id for this window?"*
+- *"What's on my reMarkable?"*
+- *"Summarize my 'Architecture notes' notebook"*
+- *"Transcribe the handwritten notes from last week's meeting"*
+- *"Pull the action items out of my reMarkable notebook"*
+- *"Which notebook did I write about the migration in?"*
+- *"My reMarkable is plugged in but I can't reach 10.11.99.1"*
 
 ## Scripts
 
@@ -64,6 +71,13 @@ powershell -ExecutionPolicy Bypass -File skills/windows-perf/scripts/Disable-Unn
 
 # Orphaned agent-browser cleanup (no admin needed; -DryRun to preview)
 powershell -ExecutionPolicy Bypass -File skills/agent-browser-cleanup/scripts/Remove-OrphanedAgentBrowsers.ps1 -DryRun
+
+# List what is on a connected reMarkable (no admin needed)
+powershell -ExecutionPolicy Bypass -File skills/remarkable/scripts/Get-RemarkableDocs.ps1
+
+# Export one notebook, then split it into pages for reading
+powershell -ExecutionPolicy Bypass -File skills/remarkable/scripts/Export-RemarkableDoc.ps1 -Name 'Architecture notes' -OutFile out/source.pdf
+python skills/remarkable/scripts/pdf_to_pages.py out/source.pdf --out out/pages
 
 # Chrome on a fixed CDP port for `agent-browser --cdp 9222` (no admin needed; -Stop to shut down)
 powershell -ExecutionPolicy Bypass -File skills/agent-browser-cleanup/scripts/Start-AgentBrowserCdp.ps1
