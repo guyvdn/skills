@@ -197,8 +197,10 @@ stock templates against notebooks written on them, and it holds three ways:
 | `P US College` repeat height | 62 | 19.65 pt | **19.7 pt** |
 | That is also the template in `xochitl.conf` `LastUsedTemplates` | — | — | ✓ |
 
-So **1 pt = 3.1551 units**. Verify it the same way on a new firmware rather than
-trusting it: export a notebook, measure the background rules, compare.
+So **1 pt = 3.1551 units**. Confirmed by installing a generated template on a
+device and rendering it — the layout comes out at the intended size and
+position. Verify it the same way on new firmware rather than trusting it:
+export a notebook, measure the background rules, compare.
 
 #### The parser's rules, and how to see them
 

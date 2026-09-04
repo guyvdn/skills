@@ -46,7 +46,7 @@ powershell -File skills/remarkable/scripts/Export-RemarkableDoc.ps1 `
 
 # a whole folder — one bad notebook does not abandon the rest
 powershell -File skills/remarkable/scripts/Export-RemarkableDoc.ps1 `
-    -Folder 'Archive/Gosselin' -OutDir out/_source -SkipExisting
+    -Folder 'Archive/Project X' -OutDir out/_source -SkipExisting
 ```
 
 `-Name` matches the full path first, then falls back to a substring match, and

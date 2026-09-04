@@ -20,7 +20,7 @@ param(
     [Parameter(Mandatory)]
     [string[]] $Path,
 
-    # Destination folder path on the tablet, e.g. 'Archive/Gosselin'.
+    # Destination folder path on the tablet, e.g. 'Archive/Project X'.
     # Omit for the root folder. The folder must already exist.
     [string] $Folder,
 
