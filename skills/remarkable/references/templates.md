@@ -126,17 +126,78 @@ Then look at the PNG. Worth checking: nothing is clipped at the bottom, the
 first writing slot is the same height as the rest, and the rules are dark enough
 to see but light enough to write over.
 
-## Getting it onto the tablet
+## Two ways to use one: PDF, or a real template
 
-Any of:
+|  | Imported PDF | Installed template |
+|---|---|---|
+| Pages | Fixed — you generate 40 and that is what you get | Unlimited; every new page uses it |
+| Pick per page | No, it is a document | Yes, from the template picker |
+| Notebook default | No | Yes |
+| Install | Supported, no device changes | SSH, unsupported by reMarkable |
+| Firmware update | Survives | **Wiped — needs re-linking** |
+| Reverse it | Delete the document | `-Uninstall` |
 
-- **USB web interface** — drag the PDF onto `http://10.11.99.1` in a browser, or
-  `POST` it to `http://10.11.99.1/upload` as multipart `file`. It lands in the
-  folder most recently listed.
+Start with the PDF. Move to a real template when you know the design is right
+and you want it as a notebook default.
+
+### As a PDF
+
+- **USB web interface** — `Add-RemarkableFile.ps1`, or drag it onto
+  `http://10.11.99.1` in a browser.
 - **The desktop or mobile app**, if cloud sync is on.
 - **`rmapi put standup.pdf /Templates`** over the cloud.
 
-Imported PDFs live alongside notebooks and annotate the same way. They are *not*
-the same thing as the device's built-in templates (the ones under "new notebook
-→ template"), which live in the firmware and need a modified device to extend —
-a PDF is the supported route and survives every update.
+Note the tablet keeps the `.pdf` extension in the visible name, unlike a notebook.
+
+### As a real template
+
+A template is a **single-page image at exact panel resolution**, not a PDF:
+
+```bash
+python make_template.py templates/standup.json -o standup.pdf \
+       --png Standup.png --svg Standup.svg --device rm2
+```
+
+`--device rm2` gives 1404 x 1872, `pp` gives 1620 x 2160. Both must be **exact**
+— the device is strict. Watch for this trap: the page is 445 x 594 (ratio
+0.7492) but the panel is exactly 0.7500, so a uniform zoom lands three pixels
+tall. The generator scales each axis independently and refuses to write a
+wrongly-sized PNG. The 0.11% anisotropy is invisible.
+
+The SVG is optional and is what software 3.x uses for smooth zoom.
+
+```powershell
+.\Install-RemarkableTemplate.ps1 -Png .\Standup.png -Svg .\Standup.svg `
+    -Name 'Standup' -Password '<from the device>'
+```
+
+The password is in **Settings ▸ General ▸ Help ▸ About ▸ Copyrights and
+licenses**, at the bottom with the IP. **It changes on every firmware update.**
+
+#### Why it survives updates, and what it does not
+
+`/usr/share/remarkable/templates/` is part of the system image, so a firmware
+update **replaces the whole directory** — your PNGs and the `templates.json`
+entries both vanish. The installer therefore keeps the real files under
+`/home/root/.local/share/remarkable/templates/`, which updates leave alone, and
+symlinks them into place. After an update:
+
+```powershell
+.\Install-RemarkableTemplate.ps1 -Relink        # restores the symlinks
+```
+
+then re-run the install for each template to put its `templates.json` entry
+back. `templates.json` is backed up to `templates.json.orig` on first install,
+so the original is always recoverable.
+
+Also note the SSH host key changes on every update, so the script disables host
+key checking — over a USB cable to a link-local address that is a reasonable
+trade, but it is worth knowing it is doing it.
+
+#### What this does and does not touch
+
+It writes to the template directory and restarts `xochitl` (the UI). It does
+**not** touch your notebooks, and `-Uninstall` reverses it. It is unsupported by
+reMarkable, so treat it as deliberate rather than routine — and take it as given
+that a botched `templates.json` breaks the template picker until restored from
+the backup.

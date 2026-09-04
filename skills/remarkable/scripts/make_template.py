@@ -33,6 +33,13 @@ except ImportError:  # pragma: no cover
 # Measured from PDFs the tablet itself exported, not derived from pixel specs.
 PAGE_W, PAGE_H = 445.0, 594.0
 
+# Panel resolutions, for exporting a real installed template (which is an image
+# at native resolution, not a PDF). Both are 3:4, same as the page above.
+DEVICE_PX = {
+    "rm2": (1404, 1872),   # reMarkable 1 and 2
+    "pp":  (1620, 2160),   # reMarkable Paper Pro
+}
+
 # --- ink levels --------------------------------------------------------------
 # The rM2 panel is 16-level greyscale. Below roughly 0.80 grey a rule stops
 # being visible in daylight; above 0.55 it competes with your handwriting.
@@ -47,8 +54,18 @@ INK_DOT = (0.76, 0.76, 0.76)
 # a rule, so an over-generous drop makes the first line sit oddly low.
 HEAD_DROP = 4.0
 
+# The pinned toolbar floats OVER the page, it does not push it aside, so the
+# margin on its side has to clear it or your first words sit underneath.
+# It is about 120 px wide and the advice is to keep 130 px free; the page is
+# 445 pt across a 1404 px screen, so 130 px = 445/1404 * 130 = 41.2 pt.
+# 44 gives a little slack without eating much writing width.
+TOOLBAR_CLEAR = 44.0
+MARGIN_PLAIN = 30.0
+
 DEFAULTS = {
-    "margin_x": 30.0,
+    "toolbar": "left",     # "left", "right", or "none" if you keep it hidden
+    "margin_left": None,   # None => derived from `toolbar`
+    "margin_right": None,
     "margin_top": 30.0,
     "margin_bottom": 26.0,
     "line_gap": 26.0,      # ~9.2 mm — comfortable adult handwriting
@@ -56,6 +73,25 @@ DEFAULTS = {
     "head_size": 8.5,
     "gap": 14.0,           # vertical space between blocks
 }
+
+
+def resolve_margins(cfg, spec):
+    """Work out left/right margins from the toolbar side, unless pinned."""
+    side = str(spec.get("toolbar", cfg["toolbar"])).lower()
+    if side not in ("left", "right", "none"):
+        sys.exit(f'toolbar must be "left", "right" or "none", not {side!r}')
+
+    left = TOOLBAR_CLEAR if side == "left" else MARGIN_PLAIN
+    right = TOOLBAR_CLEAR if side == "right" else MARGIN_PLAIN
+
+    # margin_x is a shorthand that overrides both; explicit sides win over it.
+    if "margin_x" in spec:
+        left = right = float(spec["margin_x"])
+    if spec.get("margin_left") is not None:
+        left = float(spec["margin_left"])
+    if spec.get("margin_right") is not None:
+        right = float(spec["margin_right"])
+    return left, right
 
 
 class Canvas:
@@ -236,17 +272,20 @@ def layout(cv, blocks, x, y, w, avail_h, cfg):
         y += h + cfg["gap"]
 
 
-def build(spec, out_path, pages=None, preview=None):
+def build(spec, out_path, pages=None, preview=None,
+          png=None, svg=None, device="rm2"):
     cfg = dict(DEFAULTS)
     for k in cfg:
-        if k in spec:
+        if k in spec and k not in ("toolbar", "margin_left", "margin_right"):
             cfg[k] = float(spec[k])
+
+    margin_left, margin_right = resolve_margins(cfg, spec)
 
     n_pages = int(pages or spec.get("pages", 1))
     doc = pymupdf.open()
 
-    x = cfg["margin_x"]
-    w = PAGE_W - 2 * cfg["margin_x"]
+    x = margin_left
+    w = PAGE_W - margin_left - margin_right
     y = cfg["margin_top"]
     avail = PAGE_H - cfg["margin_top"] - cfg["margin_bottom"]
 
@@ -273,7 +312,7 @@ def build(spec, out_path, pages=None, preview=None):
         cv = Canvas(page, cfg)
         layout(cv, spec.get("blocks", []), x, y, w, avail, cfg)
         if spec.get("page_numbers") and n_pages > 1:
-            page.insert_text((PAGE_W - cfg["margin_x"] - 14, PAGE_H - 14),
+            page.insert_text((PAGE_W - margin_right - 14, PAGE_H - 14),
                              f"{i + 1}", fontname="Helvetica", fontsize=7,
                              color=INK_RULE)
 
@@ -284,6 +323,26 @@ def build(spec, out_path, pages=None, preview=None):
     if preview:
         pg = doc.load_page(0)
         pg.get_pixmap(matrix=pymupdf.Matrix(2, 2)).save(preview)
+
+    # Assets for installing this as a real on-device template. A template is a
+    # single page; the PDF's page count is irrelevant to it.
+    if png or svg:
+        px_w, px_h = DEVICE_PX[device]
+        pg = doc.load_page(0)
+        if png:
+            # Scale each axis independently. The page is 445x594 (ratio 0.7492)
+            # but the panel is 1404x1872 (exactly 0.7500) — close, but a uniform
+            # zoom lands 3 px tall, and the device wants the exact panel size.
+            # The 0.11% anisotropy is invisible; a wrong-sized template is not.
+            pix = pg.get_pixmap(matrix=pymupdf.Matrix(px_w / PAGE_W, px_h / PAGE_H),
+                                colorspace=pymupdf.csGRAY, alpha=False)
+            if (pix.width, pix.height) != (px_w, px_h):
+                sys.exit(f"Template PNG came out {pix.width}x{pix.height}, "
+                         f"expected {px_w}x{px_h}. Refusing to write it.")
+            pix.save(png)
+        if svg:
+            Path(svg).write_text(pg.get_svg_image(), encoding="utf-8")
+
     doc.close()
     return n_pages
 
@@ -294,16 +353,27 @@ def main() -> int:
     ap.add_argument("spec", type=Path, help="template JSON")
     ap.add_argument("-o", "--out", type=Path, required=True)
     ap.add_argument("--pages", type=int, help="override the spec's page count")
-    ap.add_argument("--preview", type=Path, help="also write a PNG of page 1")
+    ap.add_argument("--preview", type=Path, help="also write a 2x PNG of page 1, to look at")
+    ap.add_argument("--png", type=Path,
+                    help="device-resolution greyscale PNG of page 1, for installing as a real template")
+    ap.add_argument("--svg", type=Path,
+                    help="SVG of page 1, used by software 3.x for smooth zoom")
+    ap.add_argument("--device", choices=sorted(DEVICE_PX), default="rm2",
+                    help="panel to size --png for (default: rm2)")
     args = ap.parse_args()
 
     spec = json.loads(args.spec.read_text(encoding="utf-8"))
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    n = build(spec, args.out, args.pages, args.preview)
+    for p in (args.preview, args.png, args.svg):
+        if p:
+            p.parent.mkdir(parents=True, exist_ok=True)
+    n = build(spec, args.out, args.pages, args.preview,
+              args.png, args.svg, args.device)
 
     print(f"{args.out}  {n} page(s)  {PAGE_W:g} x {PAGE_H:g} pt", file=sys.stderr)
-    if args.preview:
-        print(f"{args.preview}", file=sys.stderr)
+    for p, what in ((args.preview, "preview"), (args.png, "template PNG"), (args.svg, "template SVG")):
+        if p:
+            print(f"{p}  ({what})", file=sys.stderr)
     return 0
 
 

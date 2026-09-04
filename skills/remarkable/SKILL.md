@@ -182,6 +182,21 @@ copying a spec — blocks are `header`, `section` (styles `lines` / `checks` /
 computed from the panel spec, and not A4. It is 3:4, which is the ratio of both
 the rM2 and the Paper Pro, so it fills either screen edge to edge.
 
+**The pinned toolbar floats over the page**, so the margin on its side must clear
+it — about 130 px, which is 41 pt on this page. Specs say `"toolbar": "left"`
+(the default), `"right"`, or `"none"`, and the generator widens the correct
+margin. Getting this wrong puts your first words under the toolbar.
+
+Two ways to use the result, and they are different things:
+
+- **As a PDF** — supported, no device changes, but a fixed page count.
+  `Add-RemarkableFile.ps1` puts it on the tablet.
+- **As a real template** — unlimited pages, pickable per page, settable as a
+  notebook default. Needs SSH, and a firmware update wipes it.
+  `--png`/`--svg` produce the assets; `Install-RemarkableTemplate.ps1` installs
+  them so they can be re-linked after an update. See
+  [references/templates.md](references/templates.md) before running it.
+
 The generator **refuses to overflow**: a spec that needs more room than the page
 body fails with the overage in points rather than quietly drawing past the bottom,
 because a clipped template reads as a design choice on the device rather than a bug.
