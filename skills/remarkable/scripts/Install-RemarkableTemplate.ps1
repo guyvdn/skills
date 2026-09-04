@@ -35,7 +35,12 @@
     .\Install-RemarkableTemplate.ps1 -Name Standup -Uninstall -Password xxx
     .\Install-RemarkableTemplate.ps1 -Relink -Password xxx     # after an update
 #>
-[CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
+# SupportsShouldProcess without ConfirmImpact='High': -WhatIf still dry-runs it,
+# but running the script is itself the decision, so it does not also stop to ask.
+# An interactive confirm makes it unusable from a non-interactive shell, and the
+# real safety net is elsewhere — templates.json is backed up before it is
+# touched, and -Uninstall reverses the whole thing.
+[CmdletBinding(SupportsShouldProcess)]
 param(
     [string] $Template,
 
