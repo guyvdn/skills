@@ -20,6 +20,7 @@ npx skills add guyvdn/skills
 | [windows-display-dimming](skills/windows-display-dimming/) | Diagnose and stop a laptop screen dimming by itself — ambient-light adaptive brightness, content-adaptive dimming (Intel DPST / AMD Vari-Bright / CABC), battery-saver dimming, plus a boot task so the fix survives Windows feature updates. |
 | [agent-browser-cleanup](skills/agent-browser-cleanup/) | Get `agent-browser` launching again when every command dies with "Chrome exited early (exit code: 0)", and remove the Chrome trees it leaks (hundreds of processes, gigabytes of RAM) — covers the elevated-shell cause that reinstalls and Defender exclusions cannot fix, why `close --all` misses the leak, and why "parent is dead" is the wrong orphan test. |
 | [reveal-md](skills/reveal-md/) | Create, run, and export reveal-md presentations. Use when the user wants to create a new slide deck, serve a presentation locally, or export one to PDF. |
+| [interactive-reveal-deck](skills/interactive-reveal-deck/) | Build a presentation as a reveal.js deck with a designed interface and interactive demo panels instead of static bullets — per-part accent colours, a chapter rail, a jump-to-slide palette, an annotation layer, and widgets the presenter drives from the clicker. Ships the theme, the code-window tokenizer (C#, JSON, TS), six widget patterns, a scaffold script and a layout verifier. |
 | [claude-code-sessions](skills/claude-code-sessions/) | Identify the Claude Code sessions running on this machine — map each one's friendly name to its session id, working directory and pid. Covers why the name is the address and the id usually is not, and why a live pid alone is not a live session. |
 
 ## Usage
@@ -40,6 +41,11 @@ After installing, ask your AI agent:
 - *"Create a reveal-md presentation about microservices"*
 - *"Serve my slides.md locally"*
 - *"Export my presentation to PDF"*
+- *"Make me an interactive reveal.js deck about X"*
+- *"This deck is too static — can you make it look designed?"*
+- *"Turn my slides.md into a proper reveal.js presentation"*
+- *"Add a live demo panel to this slide"*
+- *"Check my deck fits on the projector before I present"*
 - *"Which Claude session am I in?"*
 - *"What other Claude sessions are running?"*
 - *"Tell the session in D:\projects\foo what I just changed"*
@@ -84,6 +90,15 @@ powershell -ExecutionPolicy Bypass -File skills/windows-display-dimming/scripts/
 
 # List the Claude Code sessions running on this machine (read-only, no admin)
 powershell -ExecutionPolicy Bypass -File skills/claude-code-sessions/scripts/Get-ClaudeSessions.ps1
+
+# Scaffold an interactive reveal.js deck (no admin needed)
+powershell -ExecutionPolicy Bypass -File skills/interactive-reveal-deck/scripts/New-RevealDeck.ps1 -Path D:\talks\my-talk\deck -Title "My Talk"
+
+# ...with your own parts, which set the per-part accent colours
+powershell -ExecutionPolicy Bypass -Command "& './skills/interactive-reveal-deck/scripts/New-RevealDeck.ps1' -Path D:\talks\my-talk\deck -Title 'Kafka for .NET devs' -Parts 'intro:Intro','ingest:Ingest','stream:Streaming','ops:Operations'"
+
+# Check every slide fits the frame and raises no JS errors (needs agent-browser)
+powershell -ExecutionPolicy Bypass -File skills/interactive-reveal-deck/scripts/Test-DeckLayout.ps1 -Path D:\talks\my-talk\deck
 
 # ...as JSON, for a script or an agent to consume
 powershell -ExecutionPolicy Bypass -File skills/claude-code-sessions/scripts/Get-ClaudeSessions.ps1 -Json

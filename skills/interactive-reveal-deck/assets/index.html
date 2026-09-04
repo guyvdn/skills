@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DECK TITLE — subtitle</title>
+
+  <link rel="stylesheet" href="node_modules/reveal.js/dist/reset.css">
+  <link rel="stylesheet" href="node_modules/reveal.js/dist/reveal.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="css/deck.css">
+  <!-- widgets.css is opt-in: drop this line if the deck has no widget slides -->
+  <link rel="stylesheet" href="css/widgets.css">
+
+  <script>
+    /* The deck's parts, in order. `id` must match data-part on each <section>.
+       Must be set before js/chrome.js loads. Add or delete freely — the rail
+       only shows parts that actually have slides, so a spare entry here is
+       harmless and a missing one silently falls back to the first part. */
+    window.DECK_PARTS = [
+      { id: 'intro', label: 'Intro',      accent: '#8b5cf6', accent2: '#22d3ee' },
+      { id: 'one',   label: 'Part one',   accent: '#22d3ee', accent2: '#60a5fa' },
+      { id: 'two',   label: 'Part two',   accent: '#fbbf24', accent2: '#fb923c' },
+      { id: 'three', label: 'Part three', accent: '#fb7185', accent2: '#f472b6' }
+    ];
+  </script>
+</head>
+<body>
+
+<div class="reveal">
+  <div class="slides">
+
+    <!-- ==================================================================
+         Every <section> needs data-part (drives the accent + rail) and
+         should have data-title (what the palette and rail show).
+         ================================================================== -->
+
+    <section data-part="intro" data-title="Title" class="title-slide" data-transition="fade">
+      <span class="eyebrow">Eyebrow / track name</span>
+      <h1>The deck title<br>on two lines</h1>
+      <h2>The one-line promise of the talk</h2>
+      <p class="tagline">A sentence of setup. Keep it under two lines.</p>
+      <div class="meta">
+        <span class="chip"><b>4</b> parts</span>
+        <span class="chip"><b>2</b> interactive demos</span>
+        <span class="chip">press <b>?</b> for keys</span>
+      </div>
+      <aside class="notes">
+        Speaker notes go here and are worth writing — they survive into the PDF
+        handout and into the next time you give this talk. Press S for the
+        presenter window.
+      </aside>
+    </section>
+
+    <!-- ---- bullets: use ul.rows, not a bare ul ---------------------- -->
+    <section data-part="intro" data-title="A list slide">
+      <h2>A list slide</h2>
+      <ul class="rows">
+        <li class="fragment fade-in-then-semi-out">Each item is a card-like row</li>
+        <li class="fragment fade-in-then-semi-out">Read items dim, the current one stays lit</li>
+        <li class="fragment fade-in-then-semi-out">Four to five rows is the ceiling before it feels dense</li>
+      </ul>
+      <blockquote class="pull fragment fade-up">
+        <p>The line you want them to remember. <code>.pull.hero</code> makes it bigger.</p>
+      </blockquote>
+      <aside class="notes">Notes.</aside>
+    </section>
+
+    <!-- ---- cards: for parallel, non-sequential points ---------------- -->
+    <section data-part="intro" data-title="A card slide">
+      <h2>A card slide</h2>
+      <div class="grid-3">
+        <div class="card fragment fade-up">
+          <h4>Label</h4>
+          <p class="big">10&times;</p>
+          <p>A short claim with <strong>the emphasis</strong> where it belongs.</p>
+        </div>
+        <div class="card good fragment fade-up">
+          <h4>The good one</h4>
+          <p><strong>.card.good</strong> tints the border and heading green.</p>
+        </div>
+        <div class="card bad fragment fade-up">
+          <h4>The bad one</h4>
+          <p><strong>.card.bad</strong> does the same in red.</p>
+        </div>
+      </div>
+      <aside class="notes">Notes.</aside>
+    </section>
+
+    <!-- ---- comparison table ------------------------------------------ -->
+    <section data-part="intro" data-title="A comparison">
+      <h2>A comparison</h2>
+      <table class="matrix">
+        <thead>
+          <tr><th style="width:24%"></th><th>The good way</th><th>The other way</th></tr>
+        </thead>
+        <tbody>
+          <tr class="fragment fade-in"><th>Source of truth</th><td class="win">One</td><td class="lose">N files</td></tr>
+          <tr class="fragment fade-in"><th>Stays in sync</th><td class="win">Automatically</td><td class="lose">By hand</td></tr>
+          <tr class="fragment fade-in"><th>Cost to add one</th><td class="win">Nothing</td><td class="lose">Every time</td></tr>
+        </tbody>
+      </table>
+      <aside class="notes">Notes.</aside>
+    </section>
+
+    <!-- ==================================================================
+         PART ONE
+         ================================================================== -->
+
+    <section data-part="one" data-title="Part 1 — Name" class="part-divider" data-transition="zoom">
+      <div class="kicker">Part one</div>
+      <h1>The part<br>name</h1>
+      <p class="sub">The subtitle that frames it</p>
+      <div class="rule"></div>
+      <aside class="notes">Notes.</aside>
+    </section>
+
+    <!-- ---- code, with arrow-key stepping through regions -------------- -->
+    <section data-part="one" data-title="A code slide">
+      <h2>A code slide</h2>
+      <!-- data-steps="1-3|6-9" adds one fragment per range: arrowing through
+           them highlights that range and dims the rest.
+           Code goes in <script type="text/template"> — script raw text, so
+           generics and markup need NO entity escaping. -->
+      <figure class="code-window" data-code data-lang="csharp"
+              data-file="Example.cs" data-tag="hand-written" data-steps="1-2|4-7">
+        <script type="text/template">
+[SomeAttribute(Kind.One)]
+public sealed partial class Example
+{
+    public required string Name { get; init; }
+
+    public static Example First { get; }
+        = new() { Value = 1, Name = "First" };
+}
+        </script>
+      </figure>
+      <aside class="notes">
+        Notes. The step ranges are 1-2 (the attribute) then 4-7 (the values).
+      </aside>
+    </section>
+
+    <!-- ---- vertical stack: optional depth, reachable with DOWN -------
+         Use for detail you'll only show if asked. The context readout says
+         "↓ more" automatically, so you don't have to remember it's there. -->
+    <section>
+      <section data-part="one" data-title="Main point">
+        <h2>Main point</h2>
+        <p class="lead">Press <kbd>&darr;</kbd> for the detail slide beneath this one.</p>
+        <aside class="notes">Notes. There's a depth slide below if they ask.</aside>
+      </section>
+
+      <section data-part="one" data-title="The detail underneath">
+        <h2>The detail underneath</h2>
+        <p class="lead">Only shown on demand.</p>
+        <aside class="notes">Notes.</aside>
+      </section>
+    </section>
+
+    <!-- ---- WIDGET: pipeline ------------------------------------------
+         Input goes in, generated output comes out line by line. Variant
+         buttons let you change the input and rebuild, which is the point:
+         one small change, a different whole output. -->
+    <section data-part="one" data-title="Run the thing" data-interactive>
+      <h2>Run the thing</h2>
+
+      <div class="toolbar" data-widget="pipeline-toolbar">
+        <span class="label">Variant</span>
+        <div class="seg" data-role="kind">
+          <button data-kind="Int" aria-selected="true">Kind.Int</button>
+          <button data-kind="String">Kind.String</button>
+        </div>
+        <button class="btn primary" data-role="build">&#9654; Build <span class="kbd">B</span></button>
+        <button class="btn" data-role="reset">Reset</button>
+      </div>
+
+      <div class="pipeline" data-widget="pipeline" data-lang="csharp">
+        <figure class="code-window" data-role="input">
+          <div class="chrome">
+            <span class="dots"><i></i><i></i><i></i></span>
+            <span class="name">Example.cs</span>
+            <span class="tag">you write this</span>
+          </div>
+          <div class="codelines" data-role="input-code"></div>
+        </figure>
+
+        <div class="arrow">
+          <div class="beam"></div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+            <g class="cog">
+              <circle cx="12" cy="12" r="3.2"/>
+              <path d="M12 2.6v3M12 18.4v3M2.6 12h3M18.4 12h3M5.4 5.4l2.1 2.1M16.5 16.5l2.1 2.1M18.6 5.4l-2.1 2.1M7.5 16.5l-2.1 2.1"/>
+            </g>
+          </svg>
+        </div>
+
+        <figure class="code-window out" data-role="output">
+          <div class="chrome">
+            <span class="dots"><i></i><i></i><i></i></span>
+            <span class="name">Example.g.cs</span>
+            <span class="tag gen" style="background:none;border-color:color-mix(in oklab, var(--ok) 45%, transparent)">auto-generated</span>
+          </div>
+          <div class="codelines" data-role="output-code"></div>
+          <div class="placeholder">nothing generated yet<br><span style="opacity:.6">press &ldquo;Build&rdquo;</span></div>
+        </figure>
+
+        <!-- one template per side per variant; the widget reads and removes these -->
+        <script type="text/template" data-variant="Int" data-side="in">
+[Generated(Kind.Int)]
+public sealed partial class Example
+{
+    public required string Name { get; init; }
+
+    public static Example First { get; }
+        = new() { Value = 1, Name = "First" };
+}
+
+// 'Value' is never declared here.
+// The generator emits it.
+        </script>
+        <script type="text/template" data-variant="Int" data-side="out">
+// <auto-generated/>  Example.g.cs — never touched by hand
+public sealed partial class Example : IntEnum<Example>
+{
+    public int Value { get; init; }
+    public static IReadOnlyList<Example> All { get; } = [First];
+}
+        </script>
+        <script type="text/template" data-variant="String" data-side="in">
+[Generated(Kind.String)]
+public sealed partial class Example
+{
+    public required string Name { get; init; }
+
+    public static Example First { get; }
+        = new() { Value = "first", Name = "First" };
+}
+
+// 'Value' is never declared here.
+// The generator emits it.
+        </script>
+        <script type="text/template" data-variant="String" data-side="out">
+// <auto-generated/>  Example.g.cs — never touched by hand
+public sealed partial class Example : StringEnum<Example>
+{
+    public string Value { get; init; }
+    public static IReadOnlyList<Example> All { get; } = [First];
+}
+        </script>
+      </div>
+
+      <div class="stat-strip" data-role="stats">
+        <span class="s">emitted <b data-role="stat-lines">0</b> lines</span>
+        <span class="s">hand-written: <b>0</b></span>
+      </div>
+
+      <aside class="notes">
+        Press B to build, then switch variant and build again — that second
+        build is the argument. Tell them what to watch for BEFORE you press it.
+      </aside>
+    </section>
+
+    <!-- ==================================================================
+         PART TWO
+         ================================================================== -->
+
+    <section data-part="two" data-title="Part 2 — Name" class="part-divider" data-transition="zoom">
+      <div class="kicker">Part two</div>
+      <h1>Second part</h1>
+      <p class="sub">Its subtitle</p>
+      <div class="rule"></div>
+      <aside class="notes">Notes.</aside>
+    </section>
+
+    <!-- ---- WIDGET: calc ----------------------------------------------
+         One slider, several derived numbers. Expressions are in the markup
+         (data-calc / data-bar), evaluated against `n` = the slider value. -->
+    <section data-part="two" data-title="What it costs at scale" data-interactive>
+      <h2>What it costs at scale</h2>
+      <div class="calc" data-widget="calc">
+        <div class="slider-row">
+          <span class="cnt"><span data-calc="n" data-fmt="raw">6</span><small>things</small></span>
+          <input type="range" min="1" max="40" value="6" step="1" data-role="slider" aria-label="How many things">
+        </div>
+        <div class="bars">
+          <div class="bar-row">
+            <span class="who">By hand<small>the cost that grows</small></span>
+            <span class="bar-track"><span class="bar-fill" data-bar="n * 48"></span></span>
+            <span class="val"><span data-calc="n * 48">0</span> lines</span>
+          </div>
+          <div class="bar-row good">
+            <span class="who">Generated<small>the cost that doesn't</small></span>
+            <span class="bar-track"><span class="bar-fill" data-bar="42 + n"></span></span>
+            <span class="val"><span data-calc="42 + n">0</span> lines</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top:26px">
+          <div class="card pad-sm">
+            <h4>Places to change one rule</h4>
+            <p><span class="big" data-calc="n" data-fmt="raw">6</span>
+               <span style="font-size:.7em;color:var(--fg-dim)">vs.</span>
+               <span class="big" style="color:var(--ok)">1</span></p>
+          </div>
+          <div class="card pad-sm">
+            <h4>Review surface</h4>
+            <p><span class="big" data-calc="n * 48">0</span></p>
+            <p>lines a human must read</p>
+          </div>
+          <div class="card pad-sm">
+            <h4>Drift probability</h4>
+            <p><span class="big" data-calc="1 - Math.pow(0.97, n)" data-fmt="pct">0%</span></p>
+            <p>at least one copy out of sync</p>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        If these numbers are modelled rather than measured, SAY SO here and say
+        so on stage. Someone will ask, and offering it first costs nothing.
+      </aside>
+    </section>
+
+    <!-- ---- a terminal, for build output / command sequences ---------- -->
+    <section data-part="two" data-title="A terminal slide">
+      <h2>A terminal slide</h2>
+      <div class="terminal">
+<span class="dim">PS</span> <span class="p">repo&gt;</span> dotnet build
+  Thing.cs(14,19): <span class="er">error ABC1001</span>: the message
+  <span class="er">Build FAILED.</span>
+<span class="dim">PS</span> <span class="p">repo&gt;</span> <span class="dim"># fix it, rebuild</span>
+  <span class="ok">Build succeeded.</span>
+      </div>
+      <aside class="notes">Notes.</aside>
+    </section>
+
+    <!-- ==================================================================
+         CLOSING
+         ================================================================== -->
+
+    <section data-part="three" data-title="In summary">
+      <h2>In summary</h2>
+      <div class="grid-2">
+        <div class="card fragment fade-up"><h4>First takeaway</h4><p>One line.</p></div>
+        <div class="card fragment fade-up"><h4>Second takeaway</h4><p>One line.</p></div>
+        <div class="card fragment fade-up"><h4>Third takeaway</h4><p>One line.</p></div>
+        <div class="card fragment fade-up"><h4>Fourth takeaway</h4><p>One line.</p></div>
+      </div>
+      <blockquote class="pull hero fragment fade-up">
+        <p>The single sentence you want them to leave with.</p>
+      </blockquote>
+      <aside class="notes">Notes.</aside>
+    </section>
+
+    <section data-part="three" data-title="Thank you" class="title-slide" data-transition="fade">
+      <span class="eyebrow">Thank you</span>
+      <h1>Questions?</h1>
+      <h2>The deck title</h2>
+      <p class="tagline">Where to find the slides and the code.</p>
+      <aside class="notes">Notes.</aside>
+    </section>
+
+  </div>
+</div>
+
+<!-- ================= deck chrome: leave this alone ================= -->
+<nav id="rail" aria-label="Chapters"></nav>
+
+<div id="context">
+  <span class="part" data-role="part">Intro</span>
+  <span class="hint"><b data-role="hint"></b></span>
+</div>
+
+<div class="overlay" id="palette-overlay">
+  <div class="palette" role="dialog" aria-label="Jump to slide">
+    <input type="text" placeholder="Jump to a slide&hellip;" data-role="q" autocomplete="off" spellcheck="false">
+    <div class="results" data-role="results"></div>
+    <div class="foot">
+      <span><kbd>&uarr;</kbd><kbd>&darr;</kbd> navigate</span>
+      <span><kbd>Enter</kbd> jump</span>
+      <span><kbd>Esc</kbd> close</span>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="help-overlay">
+  <div class="helpcard" role="dialog" aria-label="Keyboard shortcuts">
+    <h3>Keyboard</h3>
+    <dl>
+      <dt><kbd>&rarr;</kbd> <kbd>Space</kbd></dt><dd>next slide / next fragment</dd>
+      <dt><kbd>&larr;</kbd></dt><dd>previous</dd>
+      <dt><kbd>&darr;</kbd> <kbd>&uarr;</kbd></dt><dd>optional depth slides</dd>
+      <dt><kbd>Ctrl</kbd>+<kbd>K</kbd> <kbd>/</kbd></dt><dd>jump to any slide</dd>
+      <dt><kbd>B</kbd></dt><dd>run the demo on an interactive slide</dd>
+      <dt><kbd>R</kbd></dt><dd>reset the interactive demo</dd>
+      <dt><kbd>D</kbd></dt><dd>draw on the slide</dd>
+      <dt><kbd>C</kbd></dt><dd>clear drawing</dd>
+      <dt><kbd>O</kbd> <kbd>Esc</kbd></dt><dd>slide overview</dd>
+      <dt><kbd>S</kbd></dt><dd>speaker notes window</dd>
+      <dt><kbd>F</kbd></dt><dd>fullscreen</dd>
+      <dt><kbd>?</kbd></dt><dd>this help</dd>
+    </dl>
+  </div>
+</div>
+
+<canvas id="annotate"></canvas>
+<div id="draw-badge">&#9998; draw mode — <kbd>C</kbd> clear, <kbd>D</kbd> exit</div>
+
+<script src="node_modules/reveal.js/dist/reveal.js"></script>
+<script src="node_modules/reveal.js/plugin/notes/notes.js"></script>
+<script src="node_modules/reveal.js/plugin/zoom/zoom.js"></script>
+<script src="js/code.js"></script>
+<script src="js/widgets.js"></script>
+<!-- deck-specific widgets register here, before DeckWidgets.init() runs -->
+<!-- <script src="js/my-widgets.js"></script> -->
+<script src="js/chrome.js"></script>
+<script>
+  Reveal.initialize({
+    width: 1280,
+    height: 740,
+    // 0.07, not the default 0.04: the letterbox is what keeps the chapter rail
+    // off the slide content at 16:9 and wider.
+    margin: 0.07,
+    minScale: 0.2,
+    maxScale: 2.0,
+    center: true,
+    hash: true,
+    controls: true,
+    controlsLayout: 'edges',
+    progress: true,
+    slideNumber: 'c/t',
+    // PDF handout: one page per slide, not one per fragment
+    pdfSeparateFragments: false,
+    transition: 'slide',
+    transitionSpeed: 'default',
+    backgroundTransition: 'fade',
+    // our own overlays and widgets own these keys: B C D R and /
+    keyboard: { 66: null, 67: null, 68: null, 82: null, 191: null },
+    plugins: [RevealNotes, RevealZoom]
+  }).then(() => {
+    DeckCode.render();
+    DeckWidgets.init();
+    DeckChrome.init();
+  });
+</script>
+</body>
+</html>

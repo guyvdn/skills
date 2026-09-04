@@ -1,0 +1,390 @@
+/* ==========================================================================
+   Widget styles — OPT-IN. Link this only if the deck uses these patterns.
+   Each block pairs with a widget in js/widgets.js; see references/widgets.md
+   for what each one is for and how it is built.
+
+   Widget 1  pipeline   input -> transform -> generated output, revealed by line
+   Widget 2  calc       a slider that moves several derived numbers at once
+   Widget 3  ide        fake editor: squiggle, light bulb, one-click fix
+   Widget 4  layers     a token walking down a funnel of defence layers
+   Widget 5  race       two lanes with live counters, one finishing far sooner
+   ========================================================================== */
+
+/* ---- widget 1: generator pipeline ------------------------------------- */
+.pipeline { display: grid; grid-template-columns: 1fr 66px 1.32fr; gap: 0; align-items: stretch; }
+.pipeline .codelines { font-size: .335em; line-height: 1.58; height: 430px; }
+.pipeline .code-window { display: flex; flex-direction: column; }
+.pipeline .arrow {
+  display: grid; place-items: center;
+  position: relative;
+  color: var(--fg-faint);
+}
+.pipeline .arrow svg { width: 38px; height: 38px; }
+.pipeline .arrow .cog { transform-origin: 50% 50%; }
+.pipeline.running .arrow { color: var(--accent); }
+.pipeline.running .arrow .cog { animation: spin 1.1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.pipeline .arrow .beam {
+  position: absolute; left: 0; right: 0; height: 2px; top: 50%;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0;
+}
+.pipeline.running .arrow .beam { animation: beam 1.1s ease-in-out infinite; }
+@keyframes beam {
+  0% { opacity: 0; transform: translateX(-40%) scaleX(.4); }
+  50% { opacity: 1; transform: translateX(0) scaleX(1); }
+  100% { opacity: 0; transform: translateX(40%) scaleX(.4); }
+}
+
+.pipeline .out { position: relative; }
+.pipeline .out .placeholder {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  font-family: var(--font-mono); font-size: .42em;
+  color: var(--fg-faint);
+  background: var(--bg-elevated);
+  border-radius: 0 0 var(--radius) var(--radius);
+  transition: opacity .3s ease;
+  text-align: center;
+  padding: 0 24px;
+  line-height: 1.7;
+}
+.pipeline .out.done .placeholder { opacity: 0; pointer-events: none; }
+
+.stat-strip {
+  display: flex; gap: 10px; justify-content: center; margin-top: 16px;
+  font-family: var(--font-mono); font-size: .40em;
+}
+.stat-strip .s {
+  padding: 8px 14px; border-radius: 8px;
+  background: var(--panel); border: 1px solid var(--line-soft);
+  color: var(--fg-dim);
+  opacity: 0; transform: translateY(6px);
+  transition: opacity .3s ease, transform .3s ease;
+}
+.stat-strip.in .s { opacity: 1; transform: none; }
+.stat-strip .s b { color: var(--ok); }
+
+/* ---- widget 2: cost calculator ---------------------------------------- */
+.calc { text-align: left; }
+.calc .slider-row { display: flex; align-items: center; gap: 20px; margin-bottom: 26px; }
+.calc .slider-row .cnt {
+  font-family: var(--font-mono); font-size: 1.5em; font-weight: 700; color: #fff;
+  min-width: 4.4em; text-align: left; letter-spacing: -.02em;
+}
+.calc .slider-row .cnt small { font-size: .38em; color: var(--fg-dim); font-weight: 500; display: block; letter-spacing: 0; }
+
+input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  flex: 1 1 auto; height: 8px; border-radius: 8px;
+  background: linear-gradient(90deg, var(--accent) var(--pct, 20%), var(--line) var(--pct, 20%));
+  outline: none; cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: #fff;
+  border: 4px solid var(--accent);
+  box-shadow: 0 4px 14px -2px rgba(0,0,0,.7);
+  cursor: grab;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: #fff; border: 4px solid var(--accent);
+}
+
+.bars { display: flex; flex-direction: column; gap: 18px; }
+.bar-row { display: grid; grid-template-columns: 232px 1fr auto; gap: 16px; align-items: center; }
+.bar-row .who { font-size: .62em; font-weight: 600; }
+.bar-row .who small { display: block; font-size: .72em; color: var(--fg-dim); font-weight: 400; }
+.bar-track {
+  display: block;
+  height: 30px; border-radius: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line-soft);
+  overflow: hidden;
+}
+.bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 7px 0 0 7px;
+  transition: width .5s cubic-bezier(.22,1,.36,1);
+  background: linear-gradient(90deg, color-mix(in oklab, var(--bad) 70%, black), var(--bad));
+}
+.bar-row.good .bar-fill { background: linear-gradient(90deg, color-mix(in oklab, var(--ok) 70%, black), var(--ok)); }
+.bar-row .val {
+  font-family: var(--font-mono); font-size: .58em; font-weight: 600;
+  min-width: 5.6em; text-align: right; color: var(--fg);
+}
+.bar-row.good .val { color: var(--ok); }
+.bar-row:not(.good) .val { color: var(--bad); }
+
+/* ---- widget 3: IDE simulator ------------------------------------------ */
+.ide {
+  display: grid;
+  grid-template-columns: 1fr;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-elevated);
+  text-align: left;
+  box-shadow: 0 26px 64px -30px rgba(0,0,0,.9);
+}
+.ide .tabs {
+  display: flex; align-items: stretch;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-mono); font-size: .40em;
+}
+.ide .tabs .tab {
+  padding: 10px 18px; color: var(--fg-dim);
+  border-right: 1px solid var(--line-soft);
+}
+.ide .tabs .tab.active {
+  color: #fff; background: var(--bg-elevated);
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+.ide .tabs .build {
+  margin-left: auto; display: flex; align-items: center; gap: 8px;
+  padding: 10px 18px;
+  color: var(--bad);
+  transition: color .3s ease;
+}
+.ide .tabs .build.green { color: var(--ok); }
+
+.ide .editor {
+  position: relative;
+  font-family: var(--font-mono);
+  font-size: .40em;
+  line-height: 1.85;
+  padding: 16px 0;
+  min-height: 300px;
+}
+.ide .editor .row { position: relative; display: grid; grid-template-columns: 52px 1fr; gap: 0; justify-content: initial; }
+.ide .editor .gut { color: var(--fg-faint); opacity: .55; text-align: right; padding-right: 18px; user-select: none; }
+.ide .editor .src { white-space: pre; position: relative; }
+
+/* the squiggle */
+.squig {
+  position: relative;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='5'><path d='M0 4 L2 1 L4 4 L6 1 L8 4' stroke='%23f87171' fill='none' stroke-width='1.4' stroke-linecap='round'/></svg>");
+  background-repeat: repeat-x;
+  background-size: 8px 5px;
+  background-position: left bottom;
+  padding-bottom: 5px;
+}
+.squig.fixed { background-image: none; padding-bottom: 3px; }
+
+/* the light bulb */
+.bulb {
+  position: absolute;
+  left: 8px; top: 50%; transform: translateY(-50%);
+  width: 26px; height: 26px;
+  display: grid; place-items: center;
+  border-radius: 6px;
+  cursor: pointer;
+  background: var(--panel-2);
+  border: 1px solid var(--warn);
+  font-size: 14px;
+  animation: bulbpulse 1.8s ease-in-out infinite;
+  z-index: 4;
+}
+@keyframes bulbpulse {
+  0%,100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--warn) 45%, transparent); }
+  50%     { box-shadow: 0 0 0 7px transparent; }
+}
+.bulb:hover { animation: none; border-color: #fff; }
+
+.fixmenu {
+  position: absolute;
+  z-index: 6;
+  min-width: 250px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 22px 50px -18px rgba(0,0,0,.95);
+  padding: 6px;
+  font-size: 1em;
+  overflow: hidden;
+}
+.fixmenu .hdr {
+  font-size: .82em; color: var(--fg-faint);
+  padding: 6px 12px 8px;
+  border-bottom: 1px solid var(--line-soft);
+  margin-bottom: 6px;
+}
+.fixmenu button {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  background: none; border: none; border-radius: 7px;
+  color: var(--fg); font-family: var(--font-mono); font-size: 1em;
+  padding: 10px 12px; cursor: pointer; text-align: left;
+}
+.fixmenu button:hover { background: var(--accent-soft); color: #fff; }
+
+.errorlist {
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+  font-family: var(--font-mono); font-size: .38em;
+  padding: 12px 20px;
+  min-height: 3.4em;
+  color: var(--fg-dim);
+  display: flex; align-items: center; gap: 12px;
+  transition: background .3s ease;
+}
+.errorlist .sev { color: var(--bad); font-weight: 700; }
+.errorlist.clean { background: color-mix(in oklab, var(--ok) 10%, var(--panel)); }
+.errorlist.clean .sev { color: var(--ok); }
+
+/* ---- widget 4: layered defence --------------------------------------- */
+.layers { position: relative; display: flex; flex-direction: column; gap: 12px; text-align: left; padding-left: 54px; }
+.layer {
+  display: grid; grid-template-columns: 42px 1fr 150px;
+  align-items: center; gap: 18px;
+  padding: 15px 20px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-soft);
+  background: var(--bg-elevated);
+  transition: border-color .3s ease, background .3s ease, transform .3s ease;
+}
+.layer .num {
+  width: 30px; height: 30px; border-radius: 8px;
+  display: grid; place-items: center;
+  font-family: var(--font-mono); font-size: .5em; font-weight: 700;
+  background: var(--panel-2); border: 1px solid var(--line); color: var(--fg-dim);
+}
+.layer .what { font-size: .62em; line-height: 1.4; }
+.layer .what small { display: block; color: var(--fg-dim); font-size: .8em; margin-top: 3px; }
+.layer .verdict {
+  font-family: var(--font-mono); font-size: .42em;
+  text-align: right; color: var(--fg-faint);
+  opacity: 0; transition: opacity .3s ease;
+}
+.layer.tested { border-color: var(--line); }
+.layer.tested .verdict { opacity: 1; }
+.layer.pass  { border-color: var(--line); background: var(--bg-elevated); opacity: .62; }
+.layer.pass  .verdict { color: var(--fg-faint); }
+.layer.warn  { border-color: color-mix(in oklab, var(--warn) 50%, var(--line)); background: color-mix(in oklab, var(--warn) 8%, var(--bg-elevated)); }
+.layer.warn  .verdict { color: var(--warn); }
+.layer.warn  .num { color: var(--warn); border-color: color-mix(in oklab, var(--warn) 45%, var(--line)); }
+.layer.block { border-color: var(--bad); background: color-mix(in oklab, var(--bad) 11%, var(--bg-elevated)); transform: scale(1.015); }
+.layer.block .verdict { color: var(--bad); font-weight: 700; }
+.layer.block .num { color: var(--bad); border-color: var(--bad); background: color-mix(in oklab, var(--bad) 20%, transparent); }
+.layer.active { border-color: var(--accent); }
+
+.agent-token {
+  position: absolute;
+  left: 4px;
+  width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 15px;
+  background: var(--panel-2);
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 22px -4px var(--accent);
+  z-index: 5;
+  transition: top, transform .55s cubic-bezier(.34,1.2,.64,1), opacity .3s ease;
+  pointer-events: none;
+}
+.agent-token.stuck { border-color: var(--bad); box-shadow: 0 0 24px -2px var(--bad); animation: shake .4s ease; }
+@keyframes shake {
+  0%,100% { margin-left: 0; } 25% { margin-left: -7px; } 75% { margin-left: 7px; }
+}
+
+/* ---- widget 5: perf race ---------------------------------------------- */
+.race { text-align: left; display: flex; flex-direction: column; gap: 20px; }
+.lane {
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  background: var(--bg-elevated);
+  transition: border-color .3s ease;
+}
+.lane.slow.running { border-color: var(--bad); }
+.lane.fast.running { border-color: var(--ok); }
+.lane .head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.lane .head .tag {
+  font-family: var(--font-mono); font-size: .40em; font-weight: 700;
+  padding: 4px 10px; border-radius: 6px;
+}
+.lane.slow .head .tag { background: color-mix(in oklab, var(--bad) 20%, transparent); color: var(--bad); }
+.lane.fast .head .tag { background: color-mix(in oklab, var(--ok) 20%, transparent); color: var(--ok); }
+.lane .head .name { font-size: .6em; font-weight: 600; }
+.lane .head .name small { display: block; color: var(--fg-dim); font-weight: 400; font-size: .8em; margin-top: 3px; }
+.lane .head .done {
+  margin-left: auto; font-family: var(--font-mono); font-size: .44em;
+  opacity: 0; transition: opacity .3s ease;
+}
+.lane.finished .head .done { opacity: 1; }
+.lane.slow .head .done { color: var(--bad); }
+.lane.fast .head .done { color: var(--ok); }
+
+.lane .track {
+  display: block;
+  height: 16px; border-radius: 8px; background: var(--panel);
+  border: 1px solid var(--line-soft); overflow: hidden;
+}
+.lane .fill { display: block; height: 100%; width: 0; transition: width .12s linear; }
+.lane.slow .fill { background: linear-gradient(90deg, #7f1d1d, var(--bad)); }
+.lane.fast .fill { background: linear-gradient(90deg, #065f46, var(--ok)); }
+
+.lane .meters {
+  display: flex; gap: 26px; margin-top: 12px;
+  font-family: var(--font-mono); font-size: .40em; color: var(--fg-dim);
+}
+.lane .meters b { color: var(--fg); font-weight: 600; }
+.lane .meters .warnv { color: var(--bad); }
+
+/* ---- widget 6: protocol wire log -------------------------------------- */
+/* Fixed-height, scrolling frame log. The height is deliberate: the panel
+   cannot grow past the frame however many messages you add, so this widget
+   can never be the slide that overflows. */
+.wire { text-align: left; }
+.wire-log {
+  height: 396px;
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: 10px;
+  padding-right: 6px;
+}
+.wire-log .empty {
+  margin: auto;
+  font-family: var(--font-mono); font-size: .42em;
+  color: var(--fg-faint); text-align: center; line-height: 1.7;
+}
+
+/* the native scrollbar is a grey slab on Windows and reads as a browser
+   artefact on a projector; keep the affordance, drop the chrome */
+.wire-log::-webkit-scrollbar { width: 6px; }
+.wire-log::-webkit-scrollbar-track { background: transparent; }
+.wire-log::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+.wire-log::-webkit-scrollbar-thumb:hover { background: var(--line-soft); }
+
+.frame {
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  overflow: hidden;
+  flex: 0 0 auto;
+  animation: frame-in .26s ease both;
+}
+@keyframes frame-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+/* direction is carried by the left edge, so it survives being scrolled
+   half out of view -- the header may be gone, the colour never is */
+.frame.out { border-left: 3px solid var(--accent); }
+.frame.in  { border-left: 3px solid var(--ok); }
+
+.frame .hdr {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  font-family: var(--font-mono); font-size: .36em; color: var(--fg-dim);
+}
+.frame .hdr .dir { font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.frame.out .hdr .dir { color: var(--accent); }
+.frame.in  .hdr .dir { color: var(--ok); }
+.frame .hdr .method { color: var(--fg); }
+.frame .hdr .note { margin-left: auto; color: var(--fg-faint); }
+
+.frame .codelines { font-size: .325em; line-height: 1.5; padding: 10px 14px; }
