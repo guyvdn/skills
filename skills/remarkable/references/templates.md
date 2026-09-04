@@ -128,17 +128,20 @@ to see but light enough to write over.
 
 ## Two ways to use one: PDF, or a real template
 
-|  | Imported PDF | Installed template |
-|---|---|---|
-| Pages | Fixed — you generate 40 and that is what you get | Unlimited; every new page uses it |
-| Pick per page | No, it is a document | Yes, from the template picker |
-| Notebook default | No | Yes |
-| Install | Supported, no device changes | SSH, unsupported by reMarkable |
-| Firmware update | Survives | **Wiped — needs re-linking** |
-| Reverse it | Delete the document | `-Uninstall` |
+|  | Imported PDF | Template (library entry) | Template (legacy) |
+|---|---|---|---|
+| Pages | Fixed — 40 is 40 | Unlimited | Unlimited |
+| Pick per page | No, it is a document | Yes | Yes |
+| Notebook default | No | Yes | Yes |
+| Install | No device changes | SSH | SSH |
+| Firmware update | Survives | **Survives** | Wiped; `-Relink` |
+| Syncs to cloud | Yes | Yes | No |
+| Reverse it | Delete the document | `-Uninstall` | `-Uninstall` |
+| Script | `Add-RemarkableFile.ps1` | `Add-RemarkableCustomTemplate.ps1` | `Install-RemarkableTemplate.ps1` |
 
-Start with the PDF. Move to a real template when you know the design is right
-and you want it as a notebook default.
+Start with the PDF while you are still changing the design — it needs no device
+access. Move to a **library-entry template** once it is right. The legacy column
+is only for firmware with no `CustomTemplate` support.
 
 ### As a PDF
 
