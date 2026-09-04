@@ -9,13 +9,12 @@ decoration, and every design decision below follows from the thumbnail being abo
 ```bash
 python skills/remarkable/scripts/make_template.py \
     skills/remarkable/templates/cover.json -o dev-leads.pdf \
-    --title "Dev leads" \
-    --icons person,code-window,lightbulb,bar-chart,arrow-up,gear,laptop \
+    --title "Dev leads" --emoji "💻📊💡🐛" \
     --template "Dev leads.template" --preview cover.png
 ```
 
 That is one spec file for every cover you will ever make. Do not copy `cover.json`
-per notebook — override `--title` and `--icons` instead.
+per notebook — override `--title` and `--emoji` instead.
 
 ## What it draws
 
@@ -23,21 +22,46 @@ per notebook — override `--title` and `--icons` instead.
 ┌──────────────────────────┐
 │      DEV LEADS           │  banner: grey band, title as filled outlines
 ├──────────────────────────┤
-│   ▫    ⬤ hero    ▫       │  collage: first icon large in the centre,
-│   ▫              ▫       │  the rest in the corners, then the sides
-│   ▫              ▫       │
+│      💻        📊         │  the emoji, fitted to a grid that fills
+│                          │  the panel — cells kept roughly square
+│      💡        🐛         │
 ├──────────────────────────┤
 │   ─────────────────      │  footer: a rule to write a date or a period on
 └──────────────────────────┘
 ```
 
-- **The first icon in the list is the hero** — large, centred. Pick the one that says
-  what the notebook is; the rest are context.
-- Satellites fill **corners first**, then the sides. Three or four icons therefore
-  spread out instead of lining up like a toolbar.
-- Past eight satellites the extras are dropped, with a note on stderr.
+One to six emoji works best. Columns are chosen so the cells come out roughly
+square, so two emoji stack on this tall panel rather than sitting in a row with dead
+space above and below; a short last row is centred. `--emoji-style outline` draws them
+hollow instead of filled, if solid black is too heavy for you.
 
-## The icons
+**One emoji at full size is the most legible thumbnail.** At 20 mm wide, four emoji are
+already small; six is the practical limit.
+
+## Where the emoji come from
+
+The system emoji font, as **outlines** — on Windows that is Segoe UI Emoji
+(`seguiemj.ttf`), a colour COLR/CPAL font whose *base* glyph layer is a clean black
+silhouette. Extracting outlines rather than rendering the font normally is what gets
+that layer, and it happens to be exactly what a 16-level greyscale panel wants. The
+lookup order is in `rm_glyphs.EMOJI_FONTS`; Apple Color Emoji and Noto Emoji are the
+fallbacks.
+
+**Single code points only.** A ZWJ sequence such as 👨‍💻 is composed at render time
+from several glyphs and has no single outline to take, so it comes back empty — the
+generator says so on stderr rather than silently drawing nothing. Use 💻 instead.
+
+Emoji are fitted by their **ink bounding box**, not their advance width. Fonts give
+emoji wildly different extents, and placing them on advance width alone leaves a row
+visibly uneven.
+
+## The drawn icons (the older route)
+
+`--icons` uses a small hand-drawn library instead of emoji, laid out as a collage:
+first icon large in the centre, the rest in the corners, then the sides. It predates
+the emoji route and is kept because the grey fills are lighter on the eye than solid
+silhouettes. **Prefer `--emoji`** — it has thousands of shapes, needs no maintenance,
+and is drawn by people who can draw.
 
 `--list-icons` prints the names. `--icon-sheet sheet.pdf` draws all of them on one
 captioned page — use that to choose, and **use it as the regression test after
@@ -109,7 +133,7 @@ previewing the design, not for shipping it.
 
 | | |
 |---|---|
-| Cover template file size | ~78 kB, ~40 path items, ~1000 vertices |
+| Cover template file size | ~20-80 kB depending on the artwork |
 | Stock reMarkable template | ~1 kB |
 | Text items in a cover | **zero** — that is the point |
 

@@ -23,6 +23,7 @@ fill the whole set as one shape with an even-odd rule rather than one at a time.
 
 from __future__ import annotations
 
+import pathlib
 import re
 
 import pymupdf
@@ -142,15 +143,37 @@ def _subpaths(d):
     return paths
 
 
+# Monochrome emoji, in preference order. Segoe UI Emoji is a colour (COLR/CPAL)
+# font, but its *base* glyph layer is a clean black silhouette — which is
+# exactly what a 16-level greyscale panel wants, and what comes back when the
+# outlines are extracted rather than the font being rendered normally.
+EMOJI_FONTS = (
+    "C:/Windows/Fonts/seguiemj.ttf",              # Segoe UI Emoji, Windows
+    "C:/Windows/Fonts/seguisym.ttf",              # Segoe UI Symbol, fallback
+    "/System/Library/Fonts/Apple Color Emoji.ttc",
+    "/usr/share/fonts/truetype/noto/NotoEmoji-Regular.ttf",
+)
+
+
+def emoji_font():
+    for p in EMOJI_FONTS:
+        if pathlib.Path(p).exists():
+            return p
+    return None
+
+
 def text_width(s, size, fontname="Helvetica-Bold"):
     return pymupdf.get_text_length(s, fontname=fontname, fontsize=size)
 
 
-def outlines(s, size, x=0.0, y=0.0, fontname="Helvetica-Bold", tracking=0.0):
+def outlines(s, size, x=0.0, y=0.0, fontname="Helvetica-Bold", tracking=0.0,
+             fontfile=None):
     """Subpaths for `s` with its baseline starting at (x, y), in page points.
 
     `tracking` adds letter spacing as a fraction of the size — a little of it
     makes a heavy uppercase title read as a poster rather than a word.
+    `fontfile` loads any TTF on the machine; `fontname` is then just the label
+    PyMuPDF caches it under.
     """
     if not s:
         return []
@@ -160,13 +183,14 @@ def outlines(s, size, x=0.0, y=0.0, fontname="Helvetica-Bold", tracking=0.0):
     doc = pymupdf.open()
     page = doc.new_page(width=4000, height=1000)
     ox, oy = 20.0, 600.0
-    if tracking:
+    kw = {"fontfile": fontfile, "fontname": fontname} if fontfile else {"fontname": fontname}
+    if tracking and not fontfile:
         pen = ox
         for ch in s:
-            page.insert_text((pen, oy), ch, fontsize=size, fontname=fontname)
+            page.insert_text((pen, oy), ch, fontsize=size, **kw)
             pen += text_width(ch, size, fontname) + size * tracking
     else:
-        page.insert_text((ox, oy), s, fontsize=size, fontname=fontname)
+        page.insert_text((ox, oy), s, fontsize=size, **kw)
 
     svg = page.get_svg_image(text_as_path=True)
     doc.close()
@@ -189,3 +213,42 @@ def advance(s, size, fontname="Helvetica-Bold", tracking=0.0):
         return 0.0
     w = text_width(s, size, fontname)
     return w + size * tracking * (len(s) - 1)
+
+
+def bbox(subpaths):
+    """(x0, y0, x1, y1) of a set of subpaths, or None if there is nothing."""
+    pts = [p for sub in subpaths for p in sub]
+    if not pts:
+        return None
+    xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def fit(subpaths, x, y, w, h):
+    """Scale and centre subpaths into the box, keeping their aspect ratio.
+
+    Emoji come out of the font with wildly different ink extents — a 📊 fills
+    its em box, a 💡 is tall and narrow — so placing them on advance width
+    alone leaves them visibly off-centre and unequal. Fitting the actual ink
+    box is what makes a row of them look deliberate.
+    """
+    b = bbox(subpaths)
+    if not b:
+        return []
+    bx0, by0, bx1, by1 = b
+    bw, bh = max(bx1 - bx0, 1e-6), max(by1 - by0, 1e-6)
+    s = min(w / bw, h / bh)
+    dx = x + (w - bw * s) / 2 - bx0 * s
+    dy = y + (h - bh * s) / 2 - by0 * s
+    return [[(px * s + dx, py * s + dy) for px, py in sub] for sub in subpaths]
+
+
+def emoji_outlines(ch, box_w, box_h, x=0.0, y=0.0, fontfile=None):
+    """One emoji, fitted into a box. Single code points only — a ZWJ sequence
+    (👨‍💻) has no single glyph to take outlines from and comes back empty."""
+    fontfile = fontfile or emoji_font()
+    if not fontfile:
+        raise RuntimeError("No emoji font found. Looked in:\n  " +
+                           "\n  ".join(EMOJI_FONTS))
+    raw = outlines(ch, 200.0, 0.0, 0.0, fontname="emoji", fontfile=fontfile)
+    return fit(raw, x, y, box_w, box_h)

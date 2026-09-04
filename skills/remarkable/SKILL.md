@@ -237,18 +237,21 @@ generator, a `cover` block:
 ```bash
 python skills/remarkable/scripts/make_template.py \
     skills/remarkable/templates/cover.json -o dev-leads.pdf \
-    --title "Dev leads" \
-    --icons person,code-window,lightbulb,bar-chart,arrow-up,gear,laptop \
+    --title "Dev leads" --emoji "💻📊💡🐛" \
     --template "Dev leads.template" --preview cover.png
 ```
 
-Framed page, grey title banner, an icon collage — **first icon is the hero**, in the
-centre, the rest around it — and a footer rule to date it. `cover.json` is the only
-spec you need; override `--title` and `--icons` rather than copying it per notebook.
+Framed page, grey title banner, the emoji fitted to a grid that fills the panel, and a
+footer rule to date it. `cover.json` is the only spec you need; override `--title` and
+`--emoji` rather than copying it per notebook. One emoji at full size makes the most
+legible thumbnail; six is the practical limit.
 
-`--list-icons` names the 31 icons; `--icon-sheet sheet.pdf` draws them all captioned
-on one page, which is both the picker and the regression test after editing
-`rm_icons.py`.
+The emoji come from the **system emoji font as outlines** — Segoe UI Emoji on Windows,
+whose base glyph layer is a clean black silhouette, which is what a greyscale panel
+wants. **Single code points only**: a ZWJ sequence like the technologist emoji is
+composed from several glyphs, has no single outline, and comes back empty with a note
+on stderr. `--emoji-style outline` draws them hollow. `--icons` is an older hand-drawn
+library, kept but not preferred — see [references/covers.md](references/covers.md).
 
 Install it as a template (`Add-RemarkableCustomTemplate.ps1`), then apply it to page 1
 in the picker. **The PDF output is for previewing only** — an imported PDF is its own

@@ -491,6 +491,41 @@ def render_rule(cv, spec, x, y, w, h, cfg):
 SAT_SLOTS = (135, 45, 180, 0, -135, -45, 90, -90)
 
 
+def render_emoji_grid(cv, chars, x, y, w, h, spec):
+    """Emoji, fitted to a grid that fills the panel.
+
+    Columns are chosen so the cells come out roughly square, which is what
+    stops two emoji from sitting side by side on a tall panel with a band of
+    dead space above and below them.
+    """
+    n = len(chars)
+    cols = max(1, min(n, round(math.sqrt(n * w / h)) or 1))
+    rows = -(-n // cols)
+    cw, ch = w / cols, h / rows
+    inset = float(spec.get("emoji_inset", 0.86))
+    style = str(spec.get("emoji_style", "solid")).lower()
+
+    for i, c in enumerate(chars):
+        r, col = divmod(i, cols)
+        in_row = min(cols, n - r * cols)
+        # Centre a short last row instead of leaving it left-aligned.
+        row_x = x + (w - in_row * cw) / 2
+        bw, bh = cw * inset, ch * inset
+        sub = rm_glyphs.emoji_outlines(
+            c, bw, bh,
+            row_x + col * cw + (cw - bw) / 2, y + r * ch + (ch - bh) / 2)
+        if not sub:
+            print(f"note: no glyph for {c!r} — a ZWJ sequence has no single "
+                  f"outline; use a plain single-code-point emoji.",
+                  file=sys.stderr)
+            continue
+        if style == "outline":
+            cv.shape(sub, ink=INK_LINE, width=max(min(cw, ch) * 0.022, 0.8),
+                     fill=(1.0, 1.0, 1.0))
+        else:
+            cv.shape(sub, fill=INK_LINE)
+
+
 def render_cover(cv, spec, x, y, w, h, cfg):
     """A poster page: framed, a title banner, an icon collage, a footer line.
 
@@ -550,8 +585,11 @@ def render_cover(cv, spec, x, y, w, h, cfg):
         cv.line(x + pad * 1.6, foot_y + foot_h * 0.62,
                 x + w - pad * 1.6, foot_y + foot_h * 0.62, INK_LINE, 1.4)
 
-    # --- the collage ---
-    if not icons:
+    # --- the artwork ---
+    emoji = spec.get("emoji")
+    if isinstance(emoji, str):
+        emoji = [c for c in emoji if not c.isspace()]
+    if not icons and not emoji:
         return
     ax0, ay0 = x + pad, band_y + pad
     ax1, ay1 = x + w - pad, foot_y - pad
@@ -561,6 +599,10 @@ def render_cover(cv, spec, x, y, w, h, cfg):
     cxc, cyc = ax0 + aw / 2, ay0 + ah / 2
     scale = float(spec.get("icon_scale", 1.0))
     weight = float(spec.get("icon_weight", 0.030))
+
+    if emoji:
+        render_emoji_grid(cv, emoji, ax0, ay0, aw, ah, spec)
+        return
 
     unknown = [n for n in icons if n not in rm_icons.REGISTRY]
     if unknown:
@@ -782,6 +824,10 @@ def main() -> int:
                                     "name the template installs under")
     ap.add_argument("--icons", help="comma-separated icon names for a cover "
                                     "block; the first one is the large one")
+    ap.add_argument("--emoji", help="emoji for a cover block, e.g. --emoji "
+                                    "'💡📊🐛'. Takes precedence over --icons")
+    ap.add_argument("--emoji-style", choices=("solid", "outline"),
+                    help="filled silhouettes (default) or hollow line art")
     ap.add_argument("--subtitle", help="a line under the footer rule, instead "
                                        "of leaving it blank to write on")
     ap.add_argument("--list-icons", action="store_true",
@@ -816,12 +862,17 @@ def main() -> int:
     if args.title:
         spec["title"] = args.title
     covers = [b for b in spec.get("blocks", []) if b.get("type") == "cover"]
-    if args.icons or args.subtitle:
+    if args.icons or args.subtitle or args.emoji or args.emoji_style:
         if not covers:
-            ap.error("--icons/--subtitle only apply to a spec with a cover block")
+            ap.error("--icons/--emoji/--subtitle only apply to a spec with a "
+                     "cover block")
         for b in covers:
             if args.icons:
                 b["icons"] = [s.strip() for s in args.icons.split(",") if s.strip()]
+            if args.emoji:
+                b["emoji"] = args.emoji
+            if args.emoji_style:
+                b["emoji_style"] = args.emoji_style
             if args.subtitle:
                 b["subtitle"] = args.subtitle
 

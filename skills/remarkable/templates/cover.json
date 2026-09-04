@@ -3,7 +3,7 @@
     "category": "Covers",
     "pages": 1,
 
-    "//": "A cover is artwork, not a writing surface, so the toolbar rule does not apply — it is symmetric and tight to the bezel. Override title and icons on the command line rather than copying this file per notebook.",
+    "//": "A cover is artwork, not a writing surface, so the toolbar rule does not apply — it is symmetric and tight to the bezel. Override title and emoji on the command line rather than copying this file per notebook.",
     "toolbar": "none",
     "margin_x": 24,
     "margin_top": 30,
@@ -13,8 +13,9 @@
         {
             "type": "cover",
             "fill": true,
-            "icons": ["person", "code-window", "lightbulb", "bar-chart",
-                      "arrow-up", "gear", "laptop"]
+
+            "//": "Emoji come from the system emoji font as monochrome outlines. Single code points only. `icons` (the drawn library, see --list-icons) is the alternative and is used only when `emoji` is absent.",
+            "emoji": "💡"
         }
     ]
 }
