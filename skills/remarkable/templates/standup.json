@@ -1,0 +1,37 @@
+{
+  "title": "Standup",
+  "pages": 40,
+  "line_gap": 26,
+  "page_numbers": true,
+  "blocks": [
+    {
+      "type": "header",
+      "title": "STANDUP",
+      "fields": [
+        { "label": "Date", "flex": 3 },
+        { "label": "Sprint", "flex": 2 }
+      ]
+    },
+    { "type": "section", "title": "Yesterday", "style": "lines", "lines": 3 },
+    { "type": "section", "title": "Today", "style": "lines", "lines": 3 },
+    { "type": "section", "title": "Blockers", "style": "lines", "lines": 2 },
+    {
+      "type": "row",
+      "fill": true,
+      "columns": [
+        {
+          "width": 0.52,
+          "blocks": [
+            { "type": "section", "title": "To do", "style": "checks", "fill": true }
+          ]
+        },
+        {
+          "width": 0.48,
+          "blocks": [
+            { "type": "section", "title": "Notes", "style": "dots", "fill": true }
+          ]
+        }
+      ]
+    }
+  ]
+}

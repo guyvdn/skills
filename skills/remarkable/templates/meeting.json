@@ -1,0 +1,36 @@
+{
+  "title": "Meeting notes",
+  "pages": 60,
+  "line_gap": 26,
+  "page_numbers": true,
+  "blocks": [
+    {
+      "type": "header",
+      "title": "MEETING",
+      "fields": [
+        { "label": "Date", "flex": 2 },
+        { "label": "Who", "flex": 3 }
+      ]
+    },
+    { "type": "section", "title": "Purpose", "style": "lines", "lines": 1 },
+    { "type": "section", "title": "Notes", "style": "lines", "fill": true },
+    {
+      "type": "row",
+      "height": 130,
+      "columns": [
+        {
+          "width": 0.5,
+          "blocks": [
+            { "type": "section", "title": "Decisions", "style": "lines", "fill": true }
+          ]
+        },
+        {
+          "width": 0.5,
+          "blocks": [
+            { "type": "section", "title": "Actions", "style": "checks", "fill": true }
+          ]
+        }
+      ]
+    }
+  ]
+}

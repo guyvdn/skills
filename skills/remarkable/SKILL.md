@@ -164,6 +164,32 @@ candidates (filter with `-Match` on names first, and use the modified dates), th
 search the transcripts. Say plainly that this is what you are doing and roughly how
 many pages it will read, before doing it for a whole tablet.
 
+## Making template PDFs
+
+The other direction: generate a ruled page — standup, meeting notes, weekly plan —
+sized to the device so it fills the screen instead of sitting in grey bands.
+
+```bash
+python skills/remarkable/scripts/make_template.py \
+    skills/remarkable/templates/standup.json -o standup.pdf --pages 40 --preview p1.png
+```
+
+Ships with `standup.json`, `meeting.json`, `weekly.json`. Write a new one by
+copying a spec — blocks are `header`, `section` (styles `lines` / `checks` /
+`dots` / `grid` / `box`), `row`, `rule`, `spacer`.
+
+**The page is `445 x 594 pt`, measured from the tablet's own exports** — not
+computed from the panel spec, and not A4. It is 3:4, which is the ratio of both
+the rM2 and the Paper Pro, so it fills either screen edge to edge.
+
+The generator **refuses to overflow**: a spec that needs more room than the page
+body fails with the overage in points rather than quietly drawing past the bottom,
+because a clipped template reads as a design choice on the device rather than a bug.
+
+Always render `--preview` and look at it before shipping a template. Details —
+grey levels for e-ink, line gaps, the spec reference, and how to get the file onto
+the tablet — are in [references/templates.md](references/templates.md).
+
 ## Notes and limits
 
 - The tablet's own **Convert to text** (select strokes → Convert) is excellent but is
