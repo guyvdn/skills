@@ -94,28 +94,172 @@ def resolve_margins(cfg, spec):
     return left, right
 
 
+# reMarkable's own template DSL works in device pixels: 1 unit = 1 px on a
+# 1404-wide portrait page. Confirmed three ways against a real device —
+# a stock template's group x of (1404-1872)/2 = -234 units lands at -74.2 pt in
+# an exported notebook, "P US College"'s 62-unit repeat lands at 19.7 pt, and
+# that is the template the notebooks were actually written on.
+UNITS_PER_PT = DEVICE_PX["rm2"][0] / PAGE_W      # 3.1551
+
+
 class Canvas:
-    def __init__(self, page, cfg):
-        self.p = page
+    """Drawing surface. Subclasses render to a PDF page or to the device DSL.
+
+    Everything the block renderers draw goes through these primitives, so one
+    layout produces either output with no branching in the renderers.
+    """
+
+    def __init__(self, cfg):
         self.cfg = cfg
 
-    def rule(self, x0, y, x1, color=INK_RULE, width=None):
-        self.p.draw_line((x0, y), (x1, y),
-                         color=color, width=width or self.cfg["rule_width"])
+    # -- primitives, implemented by subclasses --
+    def line(self, x0, y0, x1, y1, ink=INK_RULE, width=None): ...
+    def rect(self, x0, y0, x1, y1, ink=INK_EDGE, width=0.7): ...
+    def text(self, x, y, s, size, bold=False, ink=INK_HEAD): ...
+
+    def rows(self, x, y_first, w, gap, n, checks=False):
+        """n evenly spaced writing rows, optionally each with a checkbox."""
+        raise NotImplementedError
+
+    def dots(self, x, y, w, h, step):
+        raise NotImplementedError
+
+    # -- shared helpers --
+    def rule(self, x0, y, x1, ink=INK_RULE, width=None):
+        self.line(x0, y, x1, y, ink, width or self.cfg["rule_width"])
 
     def heading(self, x, y, text):
-        """Small-caps-ish section heading with a rule under it."""
-        self.p.insert_text((x, y), text.upper(), fontname="Helvetica-Bold",
-                           fontsize=self.cfg["head_size"], color=INK_HEAD)
-        return y + 5.0
+        self.text(x, y, text.upper(), self.cfg["head_size"], bold=True, ink=INK_HEAD)
 
     def label(self, x, y, text, size=8.0):
-        self.p.insert_text((x, y), text, fontname="Helvetica",
-                           fontsize=size, color=INK_HEAD)
+        self.text(x, y, text, size, ink=INK_HEAD)
 
-    def checkbox(self, x, y, size=9.0):
-        r = pymupdf.Rect(x, y - size, x + size, y)
-        self.p.draw_rect(r, color=INK_EDGE, width=0.7)
+
+class PdfCanvas(Canvas):
+    def __init__(self, page, cfg):
+        super().__init__(cfg)
+        self.p = page
+
+    def line(self, x0, y0, x1, y1, ink=INK_RULE, width=None):
+        self.p.draw_line((x0, y0), (x1, y1), color=ink,
+                         width=width or self.cfg["rule_width"])
+
+    def rect(self, x0, y0, x1, y1, ink=INK_EDGE, width=0.7):
+        self.p.draw_rect(pymupdf.Rect(x0, y0, x1, y1), color=ink, width=width)
+
+    def text(self, x, y, s, size, bold=False, ink=INK_HEAD):
+        self.p.insert_text((x, y), s, fontsize=size, color=ink,
+                           fontname="Helvetica-Bold" if bold else "Helvetica")
+
+    def rows(self, x, y_first, w, gap, n, checks=False):
+        for i in range(n):
+            ly = y_first + i * gap
+            if checks:
+                self.rect(x, ly - 12.0, x + 9.0, ly - 3.0)
+                self.rule(x + 15.0, ly, x + w)
+            else:
+                self.rule(x, ly, x + w)
+
+    def dots(self, x, y, w, h, step):
+        yy = y + step / 2
+        while yy < y + h - 2:
+            xx = x + step / 2
+            while xx < x + w - 2:
+                self.p.draw_circle((xx, yy), 0.55, color=INK_DOT,
+                                   fill=INK_DOT, width=0)
+                xx += step
+            yy += step
+
+
+def _hex(ink):
+    return "#{:02x}{:02x}{:02x}".format(*(int(round(c * 255)) for c in ink))
+
+
+class TemplateCanvas(Canvas):
+    """Emits reMarkable's own .template DSL: constants-free, absolute units."""
+
+    def __init__(self, cfg):
+        super().__init__(cfg)
+        self.items = []
+
+    @staticmethod
+    def u(v):
+        return round(v * UNITS_PER_PT, 2)
+
+    def _path(self, data, ink, width):
+        item = {"type": "path", "data": data}
+        if ink is not None:
+            item["strokeColor"] = _hex(ink)
+        if width:
+            item["strokeWidth"] = round(width * UNITS_PER_PT, 2)
+        return item
+
+    def line(self, x0, y0, x1, y1, ink=INK_RULE, width=None):
+        self.items.append(self._path(
+            ["M", self.u(x0), self.u(y0), "L", self.u(x1), self.u(y1)],
+            ink, width or self.cfg["rule_width"]))
+
+    def rect(self, x0, y0, x1, y1, ink=INK_EDGE, width=0.7):
+        X0, Y0, X1, Y1 = self.u(x0), self.u(y0), self.u(x1), self.u(y1)
+        self.items.append(self._path(
+            ["M", X0, Y0, "L", X1, Y0, "L", X1, Y1, "L", X0, Y1, "Z"], ink, width))
+
+    def text(self, x, y, s, size, bold=False, ink=INK_HEAD):
+        # The DSL has no font selection; bold is approximated by the device font.
+        self.items.append({
+            "type": "text", "text": s,
+            "fontSize": round(size * UNITS_PER_PT, 1),
+            "position": {"x": self.u(x), "y": self.u(y)},
+        })
+
+    def rows(self, x, y_first, w, gap, n, checks=False):
+        """One repeat-group instead of n separate paths — idiomatic, and small."""
+        data = []
+        if checks:
+            data += ["M", self.u(0), self.u(-12.0),
+                     "L", self.u(9.0), self.u(-12.0),
+                     "L", self.u(9.0), self.u(-3.0),
+                     "L", self.u(0), self.u(-3.0), "Z"]
+            data += ["M", self.u(15.0), 0, "L", self.u(w), 0]
+        else:
+            data += ["M", 0, 0, "L", self.u(w), 0]
+
+        self.items.append({
+            "type": "group",
+            "boundingBox": {"x": self.u(x), "y": self.u(y_first),
+                            "width": self.u(w), "height": self.u(gap)},
+            "repeat": {"rows": n},
+            "children": [self._path(data, INK_RULE, self.cfg["rule_width"])],
+        })
+
+    def dots(self, x, y, w, h, step):
+        cols = max(int((w - step) // step), 1)
+        rows_n = max(int((h - step) // step), 1)
+        d = self.u(1.1)                       # a dot, drawn as a tiny square
+        self.items.append({
+            "type": "group",
+            "boundingBox": {"x": self.u(x + step / 2), "y": self.u(y + step / 2),
+                            "width": self.u(step), "height": self.u(step)},
+            "repeat": {"rows": rows_n, "columns": cols},
+            "children": [{
+                "type": "path",
+                "strokeColor": _hex(INK_DOT),
+                "fillColor": _hex(INK_DOT),
+                "strokeWidth": d,
+                "data": ["M", 0, 0, "L", d, 0, "L", d, d, "L", 0, d, "Z"],
+            }],
+        })
+
+    def document(self, name, category, orientation="portrait"):
+        return {
+            "name": name,
+            "author": "make_template.py",
+            "templateVersion": "1.0.0",
+            "formatVersion": 1,
+            "categories": [category],
+            "orientation": orientation,
+            "items": self.items,
+        }
 
 
 # --- block renderers ---------------------------------------------------------
@@ -142,20 +286,11 @@ def render_section(cv, spec, x, y, w, h, cfg):
         return
 
     if style == "box":
-        cv.p.draw_rect(pymupdf.Rect(x, y, x + w, top + h),
-                       color=INK_EDGE, width=0.7)
+        cv.rect(x, y, x + w, top + h)
         return
 
     if style == "dots":
-        step = float(spec.get("step", 16.0))
-        yy = y + step / 2
-        while yy < top + h - 2:
-            xx = x + step / 2
-            while xx < x + w - 2:
-                cv.p.draw_circle((xx, yy), 0.55, color=INK_DOT,
-                                 fill=INK_DOT, width=0)
-                xx += step
-            yy += step
+        cv.dots(x, y, w, top + h - y, float(spec.get("step", 16.0)))
         return
 
     if style == "grid":
@@ -166,8 +301,7 @@ def render_section(cv, spec, x, y, w, h, cfg):
             yy += step
         xx = x
         while xx <= x + w:
-            cv.p.draw_line((xx, y), (xx, top + h), color=INK_RULE,
-                           width=cfg["rule_width"])
+            cv.line(xx, y, xx, top + h, INK_RULE, cfg["rule_width"])
             xx += step
         return
 
@@ -175,13 +309,8 @@ def render_section(cv, spec, x, y, w, h, cfg):
     n = int((top + h - y) // gap)
     if spec.get("lines"):
         n = min(n, int(spec["lines"]))
-    for i in range(n):
-        ly = y + (i + 1) * gap
-        if style == "checks":
-            cv.checkbox(x, ly - 3.0)
-            cv.rule(x + 15.0, ly, x + w)
-        else:
-            cv.rule(x, ly, x + w)
+    if n > 0:
+        cv.rows(x, y + gap, w, gap, n, checks=(style == "checks"))
 
 
 def render_header(cv, spec, x, y, w, h, cfg):
@@ -193,8 +322,7 @@ def render_header(cv, spec, x, y, w, h, cfg):
     tw = 0.0
     if title:
         size = float(spec.get("size", 15.0))
-        cv.p.insert_text((x, baseline), title, fontname="Helvetica-Bold",
-                         fontsize=size, color=INK_TEXT)
+        cv.text(x, baseline, title, size, bold=True, ink=INK_TEXT)
         tw = pymupdf.get_text_length(title, "Helvetica-Bold", size) + 18.0
 
     if fields:
@@ -205,15 +333,15 @@ def render_header(cv, spec, x, y, w, h, cfg):
             fw = avail * float(f.get("flex", 1)) / total_flex - 10.0
             cv.label(fx, baseline, f["label"] + " ", size=8.0)
             lw = pymupdf.get_text_length(f["label"] + " ", "Helvetica", 8.0)
-            cv.rule(fx + lw, baseline + 2.0, fx + fw, color=INK_EDGE, width=0.7)
+            cv.rule(fx + lw, baseline + 2.0, fx + fw, ink=INK_EDGE, width=0.7)
             fx += fw + 10.0
 
     # the heavy rule that separates the header from the body
-    cv.rule(x, y + h - 6.0, x + w, color=INK_HEAD, width=1.0)
+    cv.rule(x, y + h - 6.0, x + w, ink=INK_HEAD, width=1.0)
 
 
 def render_rule(cv, spec, x, y, w, h, cfg):
-    cv.rule(x, y + h / 2, x + w, color=INK_EDGE, width=0.7)
+    cv.rule(x, y + h / 2, x + w, ink=INK_EDGE, width=0.7)
 
 
 RENDERERS = {
@@ -273,7 +401,7 @@ def layout(cv, blocks, x, y, w, avail_h, cfg):
 
 
 def build(spec, out_path, pages=None, preview=None,
-          png=None, svg=None, device="rm2"):
+          png=None, svg=None, device="rm2", template=None):
     cfg = dict(DEFAULTS)
     for k in cfg:
         if k in spec and k not in ("toolbar", "margin_left", "margin_right"):
@@ -309,7 +437,7 @@ def build(spec, out_path, pages=None, preview=None,
 
     for i in range(n_pages):
         page = doc.new_page(width=PAGE_W, height=PAGE_H)
-        cv = Canvas(page, cfg)
+        cv = PdfCanvas(page, cfg)
         layout(cv, spec.get("blocks", []), x, y, w, avail, cfg)
         if spec.get("page_numbers") and n_pages > 1:
             page.insert_text((PAGE_W - margin_right - 14, PAGE_H - 14),
@@ -343,6 +471,15 @@ def build(spec, out_path, pages=None, preview=None,
         if svg:
             Path(svg).write_text(pg.get_svg_image(), encoding="utf-8")
 
+    # Native .template: the same layout, emitted as reMarkable's own vector DSL.
+    if template:
+        tcv = TemplateCanvas(cfg)
+        layout(tcv, spec.get("blocks", []), x, y, w, avail, cfg)
+        doc_json = tcv.document(spec.get("title", Path(template).stem),
+                                spec.get("category", "Custom"))
+        Path(template).write_text(json.dumps(doc_json, indent=4, ensure_ascii=False),
+                                  encoding="utf-8")
+
     doc.close()
     return n_pages
 
@@ -360,18 +497,22 @@ def main() -> int:
                     help="SVG of page 1, used by software 3.x for smooth zoom")
     ap.add_argument("--device", choices=sorted(DEVICE_PX), default="rm2",
                     help="panel to size --png for (default: rm2)")
+    ap.add_argument("--template", type=Path,
+                    help="emit reMarkable's native .template DSL (software 3.20+), "
+                         "for a real installed template with unlimited pages")
     args = ap.parse_args()
 
     spec = json.loads(args.spec.read_text(encoding="utf-8"))
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    for p in (args.preview, args.png, args.svg):
+    for p in (args.preview, args.png, args.svg, args.template):
         if p:
             p.parent.mkdir(parents=True, exist_ok=True)
     n = build(spec, args.out, args.pages, args.preview,
-              args.png, args.svg, args.device)
+              args.png, args.svg, args.device, args.template)
 
     print(f"{args.out}  {n} page(s)  {PAGE_W:g} x {PAGE_H:g} pt", file=sys.stderr)
-    for p, what in ((args.preview, "preview"), (args.png, "template PNG"), (args.svg, "template SVG")):
+    for p, what in ((args.preview, "preview"), (args.png, "template PNG"),
+                    (args.svg, "template SVG"), (args.template, "native .template")):
         if p:
             print(f"{p}  ({what})", file=sys.stderr)
     return 0

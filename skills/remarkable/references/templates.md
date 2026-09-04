@@ -151,36 +151,85 @@ Note the tablet keeps the `.pdf` extension in the visible name, unlike a noteboo
 
 ### As a real template
 
-A template is a **single-page image at exact panel resolution**, not a PDF:
+**Check the format first — it changed.** Every older guide says a template is a
+PNG. On software 3.20+ (verified on build `20260612085811`, reMarkable 2) the
+templates directory holds **65 `.template` files and zero PNGs**:
 
 ```bash
-python make_template.py templates/standup.json -o standup.pdf \
-       --png Standup.png --svg Standup.svg --device rm2
+ssh root@10.11.99.1 'ls /usr/share/remarkable/templates | sed "s/.*\.//" | sort | uniq -c'
+#      1 json
+#     65 template
 ```
 
-`--device rm2` gives 1404 x 1872, `pp` gives 1620 x 2160. Both must be **exact**
-— the device is strict. Watch for this trap: the page is 445 x 594 (ratio
-0.7492) but the panel is exactly 0.7500, so a uniform zoom lands three pixels
-tall. The generator scales each axis independently and refuses to write a
-wrongly-sized PNG. The 0.11% anisotropy is invisible.
+A `.template` is a small declarative **vector DSL**, not an image — which is why
+they are ~1 kB each and stay crisp at any zoom:
 
-The SVG is optional and is what software 3.x uses for smooth zoom.
+```json
+{
+  "name": "Lines medium", "orientation": "portrait", "formatVersion": 1,
+  "constants": [ {"magicOffsetY": 177.8} ],
+  "items": [
+    { "type": "group",
+      "boundingBox": {"x": "templateWidth / 2 - templateHeight / 2",
+                      "y": "offsetY", "width": "templateHeight", "height": 78.7},
+      "repeat": {"rows": "down"},
+      "children": [ {"type": "path", "data": ["M", 0, 0, "L", "parentWidth", 0]} ] }
+  ]
+}
+```
+
+Three item types: `path` (SVG-ish `M`/`L`/`Z` data), `text` (`text`, `fontSize`,
+`position`), and `group` (a `boundingBox` plus `repeat`, which takes
+`rows`/`columns` as a count, `"down"`, `"up"`, `"right"` or `"infinite"`).
+Paths accept `strokeColor`, `strokeWidth` and `fillColor`. Values may be
+expressions over `templateWidth`, `templateHeight`, `parentWidth`,
+`paperOriginX` and your own `constants`, including ternaries.
+
+#### The coordinate system
+
+**1 unit = 1 device pixel**: portrait is `templateWidth` 1404, `templateHeight`
+1872 on an rM2. That is not documented anywhere; it was derived by measuring
+stock templates against notebooks written on them, and it holds three ways:
+
+| Check | DSL | Lands at | Measured |
+|---|---|---|---|
+| Group x of a portrait lines template | `(1404-1872)/2` = -234 | -74.17 pt | **-74.2 pt** |
+| `P US College` repeat height | 62 | 19.65 pt | **19.7 pt** |
+| That is also the template in `xochitl.conf` `LastUsedTemplates` | — | — | ✓ |
+
+So **1 pt = 3.1551 units**. Verify it the same way on a new firmware rather than
+trusting it: export a notebook, measure the background rules, compare.
+
+#### Generate and install
+
+```bash
+python make_template.py templates/standup.json -o standup.pdf --template Standup.template
+```
 
 ```powershell
-.\Install-RemarkableTemplate.ps1 -Png .\Standup.png -Svg .\Standup.svg `
-    -Name 'Standup' -Password '<from the device>'
+.\Install-RemarkableTemplate.ps1 -Template .\Standup.template -Password '<from the device>'
 ```
+
+`--png` and `--svg` still exist for older firmware that wants an image; on 3.20+
+they are not what the device reads.
 
 The password is in **Settings ▸ General ▸ Help ▸ About ▸ Copyrights and
 licenses**, at the bottom with the IP. **It changes on every firmware update.**
 
+#### The device has no scripting languages
+
+`python3`, `jq` and `perl` are all absent — it is busybox with `sh`, `awk` and
+`sed`. Any guide that pipes `templates.json` through `python3` on the device
+will fail. The installer pulls the file down, edits it here, and copies it back,
+which is also far safer than `sed`-ing JSON in place.
+
 #### Why it survives updates, and what it does not
 
 `/usr/share/remarkable/templates/` is part of the system image, so a firmware
-update **replaces the whole directory** — your PNGs and the `templates.json`
-entries both vanish. The installer therefore keeps the real files under
-`/home/root/.local/share/remarkable/templates/`, which updates leave alone, and
-symlinks them into place. After an update:
+update **replaces the whole directory** — your template files and the
+`templates.json` entries both vanish. The installer therefore keeps the real
+files under `/home/root/.local/share/remarkable/templates/custom/`, which
+updates leave alone, and symlinks them into place. After an update:
 
 ```powershell
 .\Install-RemarkableTemplate.ps1 -Relink        # restores the symlinks
