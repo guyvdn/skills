@@ -191,7 +191,9 @@ class TemplateCanvas(Canvas):
         if ink is not None:
             item["strokeColor"] = _hex(ink)
         if width:
-            item["strokeWidth"] = round(width * UNITS_PER_PT, 2)
+            # Integer, like every stock template. The parser rejects a
+            # non-integer fontSize outright; strokeWidth is not worth the risk.
+            item["strokeWidth"] = max(1, int(round(width * UNITS_PER_PT)))
         return item
 
     def line(self, x0, y0, x1, y1, ink=INK_RULE, width=None):
@@ -206,9 +208,14 @@ class TemplateCanvas(Canvas):
 
     def text(self, x, y, s, size, bold=False, ink=INK_HEAD):
         # The DSL has no font selection; bold is approximated by the device font.
+        # fontSize MUST be a positive integer. A float makes the device refuse
+        # the whole file — "error: 'fontSize' must be a positive value" — and the
+        # template then renders as a completely blank page, which looks like a
+        # layout bug rather than a parse failure. Every stock template uses an
+        # integer (24, 25, 32, 72).
         self.items.append({
             "type": "text", "text": s,
-            "fontSize": round(size * UNITS_PER_PT, 1),
+            "fontSize": max(1, int(round(size * UNITS_PER_PT))),
             "position": {"x": self.u(x), "y": self.u(y)},
         })
 
@@ -245,7 +252,7 @@ class TemplateCanvas(Canvas):
                 "type": "path",
                 "strokeColor": _hex(INK_DOT),
                 "fillColor": _hex(INK_DOT),
-                "strokeWidth": d,
+                "strokeWidth": max(1, int(round(d))),
                 "data": ["M", 0, 0, "L", d, 0, "L", d, d, "L", 0, d, "Z"],
             }],
         })

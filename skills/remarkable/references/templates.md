@@ -200,6 +200,30 @@ stock templates against notebooks written on them, and it holds three ways:
 So **1 pt = 3.1551 units**. Verify it the same way on a new firmware rather than
 trusting it: export a notebook, measure the background rules, compare.
 
+#### The parser's rules, and how to see them
+
+**`fontSize` must be a positive integer.** A float makes the device reject the
+*entire file*, and the symptom is not an error you can see — the template still
+appears in the picker and applies to a page, and renders **completely blank**.
+That looks like a layout bug and is not one. Every stock template uses an
+integer (24, 25, 32, 72); `make_template.py` rounds. `strokeWidth` is rounded
+too, on the same suspicion.
+
+The device tells you exactly what is wrong, if you ask it:
+
+```bash
+ssh root@10.11.99.1 'journalctl -u xochitl --no-pager -n 200 | grep -i template'
+# failed to parse template file: ".../Standup.template" .
+#   Error: "error: 'fontSize' must be a positive value"
+```
+
+**Check that log after every install.** It is the only feedback the device
+gives; the UI shows a blank page either way.
+
+Also note xochitl scans the staging directory and tries to parse everything in
+it, so backups must not live there — the installer keeps them in
+`/home/root/rm-template-backups/` instead.
+
 #### Generate and install
 
 ```bash

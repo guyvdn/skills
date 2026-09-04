@@ -70,6 +70,11 @@ $STAGE = '/home/root/.local/share/remarkable/templates/custom'
 $LIVE  = '/usr/share/remarkable/templates'
 $JSON  = "$LIVE/templates.json"
 
+# Backups live OUTSIDE the staging directory. xochitl scans the templates tree
+# and tries to parse everything in it, so a templates.json.bak sitting next to
+# the templates produces "Could not open file" errors in its log on every start.
+$BACKUP = '/home/root/rm-template-backups'
+
 if (-not $Name -and $Template) { $Name = [System.IO.Path]::GetFileNameWithoutExtension($Template) }
 
 # ---- ssh plumbing -----------------------------------------------------------
@@ -150,7 +155,7 @@ try {
         }
 
         # Back up once (the pristine original) and every time (the last good one).
-        Invoke-Rm "[ -f '$STAGE/templates.json.orig' ] || cp '$JSON' '$STAGE/templates.json.orig'; cp '$JSON' '$STAGE/templates.json.bak'"
+        Invoke-Rm "mkdir -p '$BACKUP'; [ -f '$BACKUP/templates.json.orig' ] || cp '$JSON' '$BACKUP/templates.json.orig'; cp '$JSON' '$BACKUP/templates.json.bak'"
 
         # NOT $json — PowerShell variable names are case-insensitive, so that
         # would silently clobber $JSON, the remote path, and scp would try to
