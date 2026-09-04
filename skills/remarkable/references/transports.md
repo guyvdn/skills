@@ -24,16 +24,42 @@ always `10.11.99.1`.
 
 ### Listing fields
 
+Exactly these, verified against software 3.x:
+
 ```json
-{ "ID": "…guid…", "VissibleName": "Architecture notes", "Type": "DocumentType",
-  "Parent": "…guid…", "fileType": "notebook", "pageCount": 34,
-  "ModifiedClient": "2026-08-30T09:14:22Z", "CurrentPage": 11, "Bookmarked": false }
+{ "ID": "…guid…", "VisibleName": "Architecture notes",
+  "VissibleName": "Architecture notes", "Type": "DocumentType",
+  "Parent": "…guid…", "fileType": "notebook",
+  "ModifiedClient": "2026-08-30T09:14:22Z", "CurrentPage": 11,
+  "Bookmarked": false }
 ```
 
 - `Type` is `DocumentType` or `CollectionType` (a folder). There is no recursive
   listing — walk it folder by folder.
-- `VissibleName` is spelled that way in the firmware. Read it as-is.
+- **Both spellings of the name are present.** `VissibleName` is the historical
+  firmware field and is always there; `VisibleName` was added later. Read either.
+- **There is no `pageCount`.** `CurrentPage` is the page the user last had open,
+  not a count. The only reliable page count comes from the exported PDF.
 - `fileType` distinguishes `notebook` from an imported `pdf` / `epub`.
+
+### The charset lie — fix this or every accented title is corrupted
+
+The server sends `Content-Type: application/json; charset=ISO-8859-1` and then
+puts **UTF-8 bytes in the body**. Any client that believes the header mangles
+every non-ASCII character: a notebook called `Sync Analyse–Dev–Test` comes back
+as `Sync Analyseâ€“Devâ€“Test`, and the corruption then propagates into filenames.
+
+`Invoke-RestMethod` believes the header. Read the raw bytes and decode them as
+UTF-8 yourself — `Get-RemarkableDocs.ps1` does this in `Invoke-RmWeb`. The
+mangling is easy to miss because it only shows up on notebooks whose titles
+happen to contain an accent, a dash, or a quote.
+
+### Names are free text — sanitise before they become filenames
+
+Notebook titles routinely contain characters Windows cannot store: `DP3/GHC Sync`
+and `UI/UX` both appeared in a single real folder. Map the invalid set to `-`
+before writing anything to disk, and keep the original title in the document's
+own front matter so nothing is lost.
 
 ### Why the PDF from here is the good one
 

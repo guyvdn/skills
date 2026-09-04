@@ -41,9 +41,21 @@ except ImportError:  # pragma: no cover - older wheels only expose `fitz`
 # an OCR artefact in an imported PDF) and the image is the real source.
 TEXT_LAYER_MIN_CHARS = 40
 
-# Long edge cap. A vision model gains nothing above this and every extra pixel
-# is tokens: cost scales with area, so 2x the DPI is 4x the price per page.
-MAX_LONG_EDGE_PX = 2000
+# Cap on WIDTH, not on the long edge. reMarkable's "extended page" makes a page
+# that keeps growing downwards, so an A4-ish notebook page can come out ten
+# times taller than it is wide. Capping the long edge on one of those scales the
+# *width* down to a couple of hundred pixels and the handwriting becomes
+# unreadable — which looks like bad handwriting, not a bad render.
+MAX_WIDTH_PX = 1600
+
+# Past this aspect ratio a page is an extended page. Rendering it whole gives a
+# sliver no model can read, so it is sliced into overlapping horizontal strips.
+TALL_PAGE_RATIO = 2.2
+
+# Each strip is this many times the page width, with SLICE_OVERLAP_PX of the
+# previous strip repeated so a line of text is never cut in half.
+SLICE_HEIGHT_RATIO = 1.35
+SLICE_OVERLAP_PX = 90
 
 
 def parse_page_range(spec: str, page_count: int) -> list[int]:
@@ -80,6 +92,8 @@ def main() -> int:
     ap.add_argument("--gray", action="store_true",
                     help="grayscale output -- smaller, but loses highlighter and Paper Pro pen colour")
     ap.add_argument("--force", action="store_true", help="ignore --max-pages")
+    ap.add_argument("--no-slice", action="store_true",
+                    help="render extended (very tall) pages whole instead of slicing them into strips")
     args = ap.parse_args()
 
     if not args.pdf.is_file():
@@ -104,32 +118,69 @@ def main() -> int:
 
     for idx in wanted:
         page = doc.load_page(idx)
-
-        # Cap the long edge so a big Paper Pro page cannot blow up the token cost.
         rect = page.rect
-        effective_zoom = zoom
-        long_edge_px = max(rect.width, rect.height) * zoom
-        if long_edge_px > MAX_LONG_EDGE_PX:
-            effective_zoom = MAX_LONG_EDGE_PX / max(rect.width, rect.height)
 
-        pix = page.get_pixmap(matrix=pymupdf.Matrix(effective_zoom, effective_zoom),
-                              colorspace=colorspace, alpha=False)
-        png = args.out / f"page-{idx + 1:03d}.png"
-        pix.save(png)
+        # Scale so the WIDTH lands at the requested DPI, capped. Height follows,
+        # however tall the page is.
+        effective_zoom = min(zoom, MAX_WIDTH_PX / rect.width)
+        matrix = pymupdf.Matrix(effective_zoom, effective_zoom)
 
         text = page.get_text().strip()
+        has_text = len(text) >= TEXT_LAYER_MIN_CHARS
+        ratio = rect.height / rect.width
+
+        if ratio <= TALL_PAGE_RATIO or args.no_slice:
+            pix = page.get_pixmap(matrix=matrix, colorspace=colorspace, alpha=False)
+            png = args.out / f"page-{idx + 1:03d}.png"
+            pix.save(png)
+            images = [{"png": str(png).replace("\\", "/"),
+                       "width": pix.width, "height": pix.height}]
+            note = ""
+        else:
+            # Extended page: slice into overlapping horizontal strips, each one
+            # a readable near-page shape.
+            full_h = rect.height * effective_zoom
+            full_w = rect.width * effective_zoom
+            strip_h = full_w * SLICE_HEIGHT_RATIO
+            step = strip_h - SLICE_OVERLAP_PX
+
+            images = []
+            top = 0.0
+            part = 0
+            while top < full_h:
+                part += 1
+                bottom = min(top + strip_h, full_h)
+                # Clip is in PDF units, so undo the zoom.
+                clip = pymupdf.Rect(rect.x0,
+                                    rect.y0 + top / effective_zoom,
+                                    rect.x1,
+                                    rect.y0 + bottom / effective_zoom)
+                pix = page.get_pixmap(matrix=matrix, colorspace=colorspace,
+                                      alpha=False, clip=clip)
+                png = args.out / f"page-{idx + 1:03d}-{part:02d}.png"
+                pix.save(png)
+                images.append({"png": str(png).replace("\\", "/"),
+                               "width": pix.width, "height": pix.height})
+                if bottom >= full_h:
+                    break
+                top += step
+            note = f"  [extended page, {len(images)} strips, ratio {ratio:.1f}]"
+
         entries.append({
             "page": idx + 1,
-            "png": str(png).replace("\\", "/"),
-            "width": pix.width,
-            "height": pix.height,
+            "png": images[0]["png"],
+            "images": images,
+            "extended_page": len(images) > 1,
+            "width": images[0]["width"],
+            "height": images[0]["height"],
             "text": text,
             # True => trust the text layer; the image is only needed for
             # handwritten margin notes and diagrams.
-            "has_text_layer": len(text) >= TEXT_LAYER_MIN_CHARS,
+            "has_text_layer": has_text,
         })
-        print(f"page {idx + 1:>3}/{page_count}  {pix.width}x{pix.height}"
-              f"{'  [text layer]' if entries[-1]['has_text_layer'] else ''}", file=sys.stderr)
+        dims = f"{images[0]['width']}x{images[0]['height']}"
+        print(f"page {idx + 1:>3}/{page_count}  {dims}"
+              f"{'  [text layer]' if has_text else ''}{note}", file=sys.stderr)
 
     manifest = {
         "source": str(args.pdf.resolve()).replace("\\", "/"),

@@ -40,13 +40,21 @@ If nothing is reachable, work through
 ## 2. Export the notebook
 
 ```powershell
+# one notebook
 powershell -File skills/remarkable/scripts/Export-RemarkableDoc.ps1 `
     -Name 'Architecture notes' -OutFile out/architecture/source.pdf
+
+# a whole folder — one bad notebook does not abandon the rest
+powershell -File skills/remarkable/scripts/Export-RemarkableDoc.ps1 `
+    -Folder 'Archive/Gosselin' -OutDir out/_source -SkipExisting
 ```
 
 `-Name` matches the full path first, then falls back to a substring match, and
 **refuses ambiguity** rather than guessing which notebook the user meant. Pass `-Id`
 (from step 1) when a name is genuinely duplicated across folders.
+
+`-Folder` flattens the tree below that folder into `-OutDir`, sanitising each title
+into a legal filename. `-SkipExisting` makes it resumable.
 
 On-device rendering of a 100-page notebook takes minutes. The default timeout is 600s;
 do not shorten it and then report a timeout as a failure.
@@ -72,6 +80,35 @@ Cost is real and scales with pixel area — doubling `--dpi` quadruples the toke
 page. Defaults are `--dpi 150` (≈2–3k tokens/page) and a 60-page ceiling.
 For a first pass on a long notebook, `--dpi 110 --gray` is a third of the cost and
 usually still legible; re-render only the pages that were not.
+
+### Extended pages — the trap that looks like bad handwriting
+
+reMarkable's **extended page** keeps growing downwards as you write, so a single
+page can be **ten or more times taller than it is wide**. Scale one of those to fit a
+fixed box and the width collapses to a couple of hundred pixels: the render comes
+out as an unreadable sliver, and it reads as illegible handwriting rather than as a
+rendering mistake. In one real folder, **ten of sixteen** pages in a notebook were
+extended pages.
+
+`pdf_to_pages.py` handles this: it caps on **width**, not the long edge, and any page
+past a 2.2 aspect ratio is sliced into overlapping horizontal strips
+(`page-007-01.png`, `-02`, …). The manifest marks those pages `extended_page: true`
+and lists every strip under `images`. **Read all the strips of a page in order** —
+the overlap exists so a line cut by a slice boundary is whole in the next one.
+
+The console output names them, so watch for it:
+
+```
+page   6/16  1237x1669  [extended page, 7 strips, ratio 7.8]
+```
+
+`--no-slice` renders such a page whole, which is almost never what you want.
+
+### Landscape pages
+
+A page written sideways exports rotated. Re-render just that page with
+`page.set_rotation(90)` (or 270) before reading rather than trying to read it
+turned — a rotated read is noticeably less accurate.
 
 ## 4. Read the pages
 

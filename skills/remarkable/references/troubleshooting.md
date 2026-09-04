@@ -114,6 +114,25 @@ python -m pip install pymupdf
 It is a self-contained wheel — no Ghostscript, poppler, or ImageMagick needed. This is
 why the script uses PyMuPDF rather than shelling out to `pdftoppm`.
 
+## `MuPDF error: syntax error: cannot find ExtGState resource 'GSa'`
+
+Cosmetic. reMarkable's PDF writer emits a graphics-state reference it never
+defines. MuPDF prints the warning to stderr and renders every page correctly
+anyway — check the page count in the output before assuming anything was lost.
+Do not "fix" it by falling back to a different renderer.
+
+## Titles come back as `Analyseâ€“Dev` / accents are mangled
+
+The tablet declares `charset=ISO-8859-1` and then sends UTF-8. See
+[transports.md](transports.md) — the scripts re-decode the raw bytes. If you are
+calling the endpoint yourself, do the same rather than trusting the header.
+
+## A notebook renders as an unreadable sliver
+
+That is an **extended page**, not bad handwriting — see the extended-pages section
+in `SKILL.md`. `pdf_to_pages.py` slices them; if you rendered the PDF some other
+way, check the aspect ratio before concluding the ink is illegible.
+
 ## The export refuses because the name is ambiguous
 
 Deliberate. Two notebooks in different folders can share a name, and quietly picking one

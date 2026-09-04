@@ -47,9 +47,25 @@ $script:NoProxySupported = $PSVersionTable.PSVersion.Major -ge 6
 
 function Invoke-RmWeb {
     param([string] $Uri)
+
+    # The tablet declares 'application/json; charset=ISO-8859-1' but actually
+    # sends UTF-8. Invoke-RestMethod believes the header, so every accented
+    # character and en dash comes back as mojibake ("Analyse-Dev-Test" becomes
+    # "Analyseâ€“Devâ€“Test"). Read the raw bytes and decode them ourselves.
     $splat = @{ Uri = $Uri; TimeoutSec = $TimeoutSec; ErrorAction = 'Stop' }
     if ($script:NoProxySupported) { $splat['NoProxy'] = $true }
-    Invoke-RestMethod @splat
+    $resp = Invoke-WebRequest @splat
+
+    $bytes = if ($resp.RawContentStream) {
+        $ms = New-Object System.IO.MemoryStream
+        $resp.RawContentStream.Position = 0
+        $resp.RawContentStream.CopyTo($ms)
+        $ms.ToArray()
+    }
+    elseif ($resp.Content -is [byte[]]) { $resp.Content }         # Windows PowerShell 5.1
+    else { [System.Text.Encoding]::GetEncoding('ISO-8859-1').GetBytes($resp.Content) }
+
+    [System.Text.Encoding]::UTF8.GetString($bytes) | ConvertFrom-Json
 }
 
 function Test-UsbTransport {
@@ -70,9 +86,10 @@ function Get-UsbTree {
 
     $entries = Invoke-RmWeb "$BaseUrl/documents/$Guid"
     foreach ($e in @($entries)) {
-        # 'VissibleName' is the tablet's own spelling. Not a typo here.
-        $name = $e.VissibleName
-        if (-not $name) { $name = $e.Name }
+        # The firmware emits both spellings; 'VissibleName' is the historical
+        # one and is always present, 'VisibleName' was added later.
+        $name = @($e.VisibleName, $e.VissibleName, $e.Name) |
+                Where-Object { $_ } | Select-Object -First 1
         $path = if ($Prefix) { "$Prefix/$name" } else { $name }
 
         $isFolder = $e.Type -eq 'CollectionType'
@@ -85,7 +102,9 @@ function Get-UsbTree {
             Name      = $name
             Id        = $e.ID
             Kind      = $kind
-            Pages     = $e.pageCount
+            # The listing carries no page count -- only CurrentPage, the page
+            # the user last had open. Page count comes from the exported PDF.
+            LastPage  = $e.CurrentPage
             Modified  = $e.ModifiedClient
             Transport = 'usb'
         }
@@ -115,7 +134,7 @@ function Get-CloudTree {
             Name      = Split-Path $path -Leaf
             Id        = $id
             Kind      = if ($i.Type -eq 'CollectionType' -or $i.IsFolder) { 'folder' } else { 'notebook' }
-            Pages     = $null
+            LastPage  = $null
             Modified  = $i.ModifiedClient
             Transport = 'cloud'
         }
@@ -156,4 +175,4 @@ if ($Match)         { $rows = $rows | Where-Object { $_.Path -match $Match } }
 $rows = $rows | Sort-Object Path
 
 if ($Json) { $rows | ConvertTo-Json -Depth 5 }
-else       { $rows | Format-Table Path, Kind, Pages, Modified, Id -AutoSize }
+else       { $rows | Format-Table Path, Kind, Modified, Id -AutoSize }
