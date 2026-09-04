@@ -1,2 +1,14 @@
 .DS_Store
 Thumbs.db
+
+# Claude Code local-only state.
+#
+# Deliberately NOT ignoring .claude/ wholesale: settings.json, skills/,
+# commands/ and agents/ under it are shared team config and should be
+# committed. Only these two are per-machine.
+#
+# worktrees/ is where Claude Code checks out temporary git worktrees --
+# a second checkout of this repo, inside this repo. Committing it would
+# nest the repo in itself.
+.claude/worktrees/
+.claude/settings.local.json
