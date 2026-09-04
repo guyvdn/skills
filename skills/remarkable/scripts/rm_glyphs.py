@@ -243,6 +243,124 @@ def fit(subpaths, x, y, w, h):
     return [[(px * s + dx, py * s + dy) for px, py in sub] for sub in subpaths]
 
 
+# --- greyscale emoji, from the font's own colour layers ----------------------
+# A COLR/CPAL emoji is a stack of flat-coloured layer glyphs. Taking each
+# layer's outline and mapping its colour to a grey gives a real greyscale
+# drawing with its internal detail intact — still vector, so it still goes
+# into the template DSL. The alternative, one flat silhouette, throws away
+# everything inside the shape.
+
+# Luminance maps into this band rather than to 0..1. Straight luminance sends
+# a yellow lightbulb to 0.93 — invisible on white paper — and a near-black
+# outline to 0.02, which on a 16-level panel is the same as 0.15. Compressing
+# into [0.16, 0.82] keeps every layer visible and keeps their order.
+GREY_MIN, GREY_MAX = 0.16, 0.82
+
+_layer_cache = {}
+
+
+def _colr_font(fontfile):
+    from fontTools.ttLib import TTFont
+    key = ("font", fontfile)
+    if key not in _layer_cache:
+        f = TTFont(fontfile, fontNumber=0)
+        _layer_cache[key] = f if ("COLR" in f and "CPAL" in f) else None
+    return _layer_cache[key]
+
+
+def _luma(c):
+    return (0.2126 * c.red + 0.7152 * c.green + 0.0722 * c.blue) / 255.0
+
+
+def emoji_layers(ch, fontfile=None, stretch=True):
+    """[(subpaths, grey), ...] for one emoji, in em space with y downwards.
+
+    `stretch` spreads whatever luminance range this particular emoji uses
+    across the whole ink band. Without it a mostly-yellow glyph comes out as
+    several near-identical light greys; with it, it keeps its own contrast.
+    """
+    fontfile = fontfile or emoji_font()
+    if not fontfile:
+        return []
+    key = ("layers", fontfile, ch, stretch)
+    if key in _layer_cache:
+        return _layer_cache[key]
+
+    font = _colr_font(fontfile)
+    if font is None or len(ch) != 1:
+        _layer_cache[key] = []
+        return []
+
+    colr = font["COLR"].table
+    recs = getattr(colr, "BaseGlyphRecordArray", None)
+    layers = getattr(colr, "LayerRecordArray", None)
+    gname = font.getBestCmap().get(ord(ch))
+    if not (recs and layers and gname):
+        _layer_cache[key] = []
+        return []
+
+    rec = next((r for r in recs.BaseGlyphRecord if r.BaseGlyph == gname), None)
+    if rec is None:
+        _layer_cache[key] = []
+        return []
+
+    from fontTools.pens.svgPathPen import SVGPathPen
+    glyphs = font.getGlyphSet()
+    upem = font["head"].unitsPerEm
+    palette = font["CPAL"].palettes[0]
+
+    raw = []
+    for i in range(rec.FirstLayerIndex, rec.FirstLayerIndex + rec.NumLayers):
+        rec_l = layers.LayerRecord[i]
+        colour = palette[rec_l.PaletteIndex]
+        if colour.alpha == 0:
+            continue
+        pen = SVGPathPen(glyphs)
+        glyphs[rec_l.LayerGlyph].draw(pen)
+        subs = _subpaths(pen.getCommands())
+        if subs:
+            # font units, y up -> em box, y down, matching page direction
+            raw.append(([[(px / upem, -py / upem) for px, py in s] for s in subs],
+                        _luma(colour)))
+    if not raw:
+        _layer_cache[key] = []
+        return []
+
+    lo = min(l for _, l in raw)
+    hi = max(l for _, l in raw)
+    span = hi - lo
+    out = []
+    for subs, l in raw:
+        t = (l - lo) / span if (stretch and span > 0.02) else l
+        g = GREY_MIN + (GREY_MAX - GREY_MIN) * t
+        out.append((subs, g))
+    _layer_cache[key] = out
+    return out
+
+
+def emoji_grey(ch, box_w, box_h, x=0.0, y=0.0, fontfile=None, stretch=True):
+    """[(subpaths, (r,g,b)), ...] fitted into a box, greys as ink tuples.
+
+    All layers are fitted with **one** transform, computed from the union of
+    their ink, so they stay registered with each other. Fitting layer by layer
+    would scale each to the box and blow the drawing apart.
+    """
+    layers = emoji_layers(ch, fontfile, stretch)
+    if not layers:
+        return []
+    every = [s for subs, _ in layers for s in subs]
+    b = bbox(every)
+    if not b:
+        return []
+    bx0, by0, bx1, by1 = b
+    bw, bh = max(bx1 - bx0, 1e-6), max(by1 - by0, 1e-6)
+    k = min(box_w / bw, box_h / bh)
+    dx = x + (box_w - bw * k) / 2 - bx0 * k
+    dy = y + (box_h - bh * k) / 2 - by0 * k
+    return [([[(px * k + dx, py * k + dy) for px, py in s] for s in subs],
+             (g, g, g)) for subs, g in layers]
+
+
 def emoji_outlines(ch, box_w, box_h, x=0.0, y=0.0, fontfile=None):
     """One emoji, fitted into a box. Single code points only — a ZWJ sequence
     (👨‍💻) has no single glyph to take outlines from and comes back empty."""

@@ -243,7 +243,8 @@ python skills/remarkable/scripts/make_template.py \
 
 A caps title at the top and **one** emoji filling the middle. Nothing else — no frame,
 no band, no rules. `cover.json` is the only spec you need; override `--title` and
-`--emoji` rather than copying it per notebook.
+`--emoji` rather than copying it per notebook. A long title **wraps** over up to three
+balanced lines rather than shrinking below the size where it can be read.
 
 That austerity is the design, not laziness. The thumbnail is **118 px wide**, and at
 that size a frame costs contrast, a grey title band drops the title to black-on-grey,
@@ -254,10 +255,11 @@ silhouette is what finds the notebook; the word only confirms it.
 collapse into the same dark donut and stop being distinguishable from each other,
 which is the one thing a navigation aid must not do.
 
-Emoji come from the **system emoji font as outlines** — Segoe UI Emoji on Windows,
-whose base glyph layer is a clean black silhouette. **Single code points only**: a ZWJ
-sequence like the technologist emoji has no single glyph and comes back empty, with a
-note on stderr. `--icons` is an older hand-drawn library, kept but not preferred — see
+The emoji is drawn in **greyscale** from the font's own COLR colour layers: each
+layer's outline is kept and its palette colour mapped to a grey, then given a dark
+contour. Still vector, and it keeps the internal detail a flat silhouette throws away.
+**Single code points only** — a ZWJ sequence like the technologist emoji has no single
+glyph and comes back empty, with a note on stderr. `--icons` is an older hand-drawn library, kept but not preferred — see
 [references/covers.md](references/covers.md).
 
 **Always look at the preview at thumbnail size, not full size**, since that is where

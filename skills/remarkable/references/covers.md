@@ -19,10 +19,10 @@ notebook — override `--title` and `--emoji`.
 
 ```
 ┌──────────────────────────┐
-│      DEV LEADS           │  title: caps, Helvetica-Bold outlines, black
+│      DEV LEADS           │  title: caps, Helvetica-Bold outlines, black,
+│                          │  wrapped over up to 3 lines rather than shrunk
 │                          │
-│                          │
-│          ⬤⬤             │  one emoji, solid, 0.70 of the page width
+│          ⬤⬤             │  one emoji, greyscale, 0.70 of the page width
 │                          │
 │                          │
 └──────────────────────────┘   no frame, no band, no rule, no date line
@@ -35,7 +35,7 @@ and removed, each for a measured reason at 118 px:
 |---|---|
 | Rounded frame | Costs contrast, adds a third thing to parse, invisible at thumbnail size |
 | Grey title banner | Drops the title from black-on-white to black-on-grey — measurably weaker |
-| Hollow (stroked) emoji | A 4 pt stroke is 1.1 px; the silhouette turns into a grey scribble |
+| Hollow (stroked) emoji | A 4 pt stroke is 1.1 px; the shape turns into a grey scribble |
 | Rule under the title | Renders as a hard 1 px bar that competes with the artwork and says nothing |
 | Footer date rule | Simply invisible |
 | Multiple emoji | Four emoji drop to ~40 px each and stop being distinguishable |
@@ -47,18 +47,40 @@ counters and ascenders fill in first as the render shrinks.
 notebooks you find the right one by silhouette before you read anything, which is why
 the emoji gets 0.70 of the page width and the title is capped rather than maximised.
 
-## Picking the emoji
+## The emoji, in greyscale
 
-**Prefer a solid mass.** Ring-shaped glyphs — 🧭 compass, ⚙ gear, 🎯 target — all
-collapse into the same dark donut at thumbnail size and become indistinguishable from
-each other. That is the exact failure mode for a navigation aid.
+The panel is 16-level greyscale, so the artwork is too. A COLR/CPAL emoji is a stack
+of flat-coloured layer glyphs, and `rm_glyphs.emoji_grey()` takes each layer's
+**outline** and maps its palette colour to a grey. Still vector, so it still goes into
+the template DSL — and the drawing keeps the internal detail a flat silhouette throws
+away: a calendar keeps its grid, a map its coastlines.
 
-Emoji come from the **system emoji font as outlines**. On Windows that is Segoe UI
-Emoji (`seguiemj.ttf`), a colour COLR/CPAL font whose *base* glyph layer is a clean
-black silhouette; extracting outlines rather than rendering the font normally is what
-gets that layer, and it happens to be exactly what a 16-level greyscale panel wants.
-The lookup order is `rm_glyphs.EMOJI_FONTS`, with Apple Color Emoji and Noto Emoji as
-fallbacks.
+Two things make that work rather than merely function:
+
+- **Luminance is remapped into `[0.16, 0.82]`, not `[0, 1]`.** Straight luminance
+  sends a yellow lightbulb to 0.93 — invisible on white paper — and a near-black
+  outline to 0.02, which on a 16-level panel is the same as 0.15.
+- **The range is stretched per emoji.** A mostly-yellow glyph would otherwise come out
+  as four near-identical light greys; stretching whatever range it actually uses
+  across the ink band gives it back its own contrast.
+
+Each layer is then **stroked with a dark contour** at `EMOJI_STROKE` = 0.010 of the
+box. That was compared at 118 px before being settled on: without it the grey fills
+float and the shape goes soft; much heavier and the internal detail fills in.
+
+All layers share **one** fit transform, computed from the union of their ink. Fitting
+each layer to the box separately scales them differently and blows the drawing apart.
+
+`--emoji-style solid` gives a flat silhouette and `outline` a hollow one; `grey` is the
+default and the one to use.
+
+**Prefer a shape with a mass.** Ring-shaped glyphs — 🧭 compass, ⚙ gear, 🎯 target —
+still collapse into the same dark donut at thumbnail size and become indistinguishable
+from each other. That is the exact failure mode for a navigation aid.
+
+The font lookup order is `rm_glyphs.EMOJI_FONTS` — Segoe UI Emoji on Windows, then
+Apple Color Emoji and Noto Emoji. A font with no COLR table falls back to a solid
+silhouette, with a note on stderr.
 
 **Single code points only.** A ZWJ sequence such as 👨‍💻 is composed at render time
 from several glyphs and has no single outline to take, so it comes back empty — the
@@ -74,7 +96,9 @@ taller-than-wide glyph still lands centred.
 | Page | 445 x 594 pt |
 | Side margins | 44 pt, symmetric |
 | Title cap top | 54 pt (`margin_top`) |
-| Title size | `min(measure / advance(title, 1.0, tracking=0.04), 78)` |
+| Title size | `min(measure / widest line, 78)`, wrapped to fit |
+| Title lines | up to 3; wraps when one line would set below 58 pt |
+| Line height | 1.06 x size |
 | Title tracking | 0.04 em |
 | Baseline | `cap_top + 0.717 * size` — Helvetica's cap height, not the em box |
 | Emoji box | 0.70 x page width, centred in the space below the title |
@@ -89,6 +113,13 @@ about a pixel of cap height.
 
 **The title size is capped at 78 pt.** Without a cap a short title like "Ops" is set
 at 130 pt and reads as shouting rather than as a label.
+
+**A long title wraps rather than shrinks.** 58 pt is a cap height of 11.1 px at
+thumbnail scale, about the floor for reading a word — below it the counters fill in.
+So `fit_title()` splits the title over up to three balanced lines and takes the fewest
+lines that clear 58 pt. "Sync Analyse Dev Test" then sets over three lines at full size
+instead of one unreadable line. The emoji box shrinks into whatever is left, so a tall
+title never pushes it off the page.
 
 ## Why the title is drawn as shapes, not text
 

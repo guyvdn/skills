@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import itertools
 import json
 import math
 import sys
@@ -494,6 +495,53 @@ TITLE_MAX = 78.0
 # shape before the title is legible as a word.
 EMOJI_FRACTION = 0.70
 
+# Outline weight for a greyscale emoji, as a fraction of its box. Without it
+# the grey fills float and the shape goes soft at thumbnail size; much above
+# this and the internal detail — a calendar grid, a map's coastlines — fills
+# in. Compared at 118 px before settling on it.
+EMOJI_STROKE = 0.010
+
+# Below this the title stops being a word at thumbnail size: 58 pt is a cap
+# height of 11.1 px at 118/445, which is about the floor for reading one.
+# A title that cannot reach it on one line gets wrapped instead of shrunk.
+TITLE_LEGIBLE = 58.0
+LINE_HEIGHT = 1.06
+MAX_LINES = 3
+
+
+def _balance(words, n):
+    """Split `words` into n lines, minimising the longest line's character
+    count. Brute force — a title is a handful of words, and the readable
+    version of this is worth more than the clever one."""
+    if n <= 1 or len(words) < n:
+        return [" ".join(words)]
+    best, best_cost = None, None
+    for cuts in itertools.combinations(range(1, len(words)), n - 1):
+        bounds = (0,) + cuts + (len(words),)
+        lines = [" ".join(words[a:b]) for a, b in zip(bounds, bounds[1:])]
+        cost = max(len(s) for s in lines)
+        if best_cost is None or cost < best_cost:
+            best, best_cost = lines, cost
+    return best
+
+
+def fit_title(text, measure, tracking, max_size=TITLE_MAX, max_lines=MAX_LINES):
+    """(lines, size). Wraps rather than shrinks: a long title set on one line
+    goes below the size where it can be read in the library."""
+    words = text.split()
+    if not words:
+        return [], 0.0
+    best = None
+    for n in range(1, min(max_lines, len(words)) + 1):
+        lines = _balance(words, n)
+        widest = max(rm_glyphs.advance(s, 1.0, tracking=tracking) for s in lines)
+        size = min(measure / widest if widest else max_size, max_size)
+        if best is None or size > best[1]:
+            best = (lines, size)
+        if size >= TITLE_LEGIBLE:
+            return lines, size
+    return best
+
 
 def render_cover(cv, spec, x, y, w, h, cfg):
     """Title at the top, one emoji in the middle. Nothing else.
@@ -522,13 +570,16 @@ def render_cover(cv, spec, x, y, w, h, cfg):
     base = y
     if heading:
         tracking = float(spec.get("tracking", 0.04))
-        unit = rm_glyphs.advance(heading, 1.0, tracking=tracking)
-        size = float(spec.get("title_size", 0.0)) or min(
-            w / unit if unit else TITLE_MAX, float(spec.get("title_max", TITLE_MAX)))
-        tw = rm_glyphs.advance(heading, size, tracking=tracking)
-        base = y + CAP_HEIGHT * size
-        cv.shape(rm_glyphs.outlines(heading, size, x + (w - tw) / 2, base,
-                                    tracking=tracking), fill=INK_LINE)
+        lines, size = fit_title(heading, w, tracking,
+                                float(spec.get("title_max", TITLE_MAX)),
+                                int(spec.get("max_lines", MAX_LINES)))
+        if spec.get("title_size"):
+            size = float(spec["title_size"])
+        for i, line in enumerate(lines):
+            tw = rm_glyphs.advance(line, size, tracking=tracking)
+            base = y + CAP_HEIGHT * size + i * LINE_HEIGHT * size
+            cv.shape(rm_glyphs.outlines(line, size, x + (w - tw) / 2, base,
+                                        tracking=tracking), fill=INK_LINE)
 
     # --- the artwork ---
     emoji = spec.get("emoji")
@@ -550,13 +601,28 @@ def render_cover(cv, spec, x, y, w, h, cfg):
             print(f"note: a cover shows one emoji; using the first of "
                   f"{len(emoji)}.", file=sys.stderr)
         box = min(PAGE_W * float(spec.get("emoji_scale", EMOJI_FRACTION)), aw, ah)
-        sub = rm_glyphs.emoji_outlines(emoji[0], box, box,
-                                       cxc - box / 2, cyc - box / 2)
+        style = str(spec.get("emoji_style", "grey")).lower()
+        bx, by = cxc - box / 2, cyc - box / 2
+
+        if style == "grey":
+            # The font's own colour layers, each mapped to a grey and given a
+            # dark contour. The contour is what keeps it from going soft at
+            # 118 px; the greys are what keep the detail a silhouette loses.
+            layers = rm_glyphs.emoji_grey(emoji[0], box, box, bx, by)
+            if layers:
+                for subs, ink in layers:
+                    cv.shape(subs, ink=INK_LINE,
+                             width=max(box * EMOJI_STROKE, 0.4), fill=ink)
+                return
+            print(f"note: {emoji[0]!r} has no colour layers; "
+                  f"falling back to a solid silhouette.", file=sys.stderr)
+
+        sub = rm_glyphs.emoji_outlines(emoji[0], box, box, bx, by)
         if not sub:
             print(f"note: no glyph for {emoji[0]!r} — a ZWJ sequence has no "
                   f"single outline; use a plain single-code-point emoji.",
                   file=sys.stderr)
-        elif str(spec.get("emoji_style", "solid")).lower() == "outline":
+        elif style == "outline":
             cv.shape(sub, ink=INK_LINE, width=max(box * 0.014, 0.8),
                      fill=(1.0, 1.0, 1.0))
         else:
@@ -787,8 +853,9 @@ def main() -> int:
                                     "block; the first one is the large one")
     ap.add_argument("--emoji", help="emoji for a cover block, e.g. --emoji "
                                     "'💡📊🐛'. Takes precedence over --icons")
-    ap.add_argument("--emoji-style", choices=("solid", "outline"),
-                    help="filled silhouettes (default) or hollow line art")
+    ap.add_argument("--emoji-style", choices=("grey", "solid", "outline"),
+                    help="greyscale from the font's colour layers (default), "
+                         "a filled silhouette, or hollow line art")
     ap.add_argument("--list-icons", action="store_true",
                     help="print the available cover icons and exit")
     ap.add_argument("--icon-sheet", type=Path, metavar="OUT.pdf",

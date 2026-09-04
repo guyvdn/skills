@@ -15,7 +15,7 @@
             "type": "cover",
             "fill": true,
 
-            "//": "One emoji, from the system emoji font, as monochrome outlines. Single code points only. Prefer a solid mass: ring shapes (compass, gear, target) all collapse into the same dark donut at thumbnail size.",
+            "//": "One emoji, from the system emoji font. Its colour layers are mapped to greys and given a dark contour, so it keeps its internal detail. Single code points only; ring shapes (compass, gear, target) collapse into the same donut at thumbnail size.",
             "emoji": "👥"
         }
     ]
