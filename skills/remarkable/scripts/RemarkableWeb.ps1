@@ -148,26 +148,38 @@ function Send-RmFile {
     )
 
     $Path = (Resolve-Path $Path).Path
+    $curl = Get-RmCurl
 
-    if ((Resolve-RmTransport) -eq 'curl') {
-        $bind = Get-RmBindAddress
-        $curl = Get-RmCurl
-        $body = & $curl --interface $bind --noproxy '*' -s -m $TimeoutSec `
-                        -w "`n%{http_code}" `
-                        -H "Origin: $script:RmBaseUrl" -H "Referer: $script:RmBaseUrl/" `
-                        -F "file=@$Path" "$script:RmBaseUrl/upload"
+    # Upload goes through curl whenever it is available, even when the plain
+    # route works. The tablet runs a minimal HTTP server that rejects the
+    # multipart body Invoke-WebRequest -Form produces — it answers
+    # {"error": "No file sent"} — while curl's -F is accepted. This is not the
+    # VPN fallback; it is the endpoint being picky about multipart encoding.
+    if ($curl) {
+        $args = @('--noproxy', '*', '-s', '-m', $TimeoutSec, '-w', "`n%{http_code}",
+                  '-H', "Origin: $script:RmBaseUrl", '-H', "Referer: $script:RmBaseUrl/",
+                  '-F', "file=@$Path", "$script:RmBaseUrl/upload")
+        $via = 'curl'
+        if ((Resolve-RmTransport) -eq 'curl') {
+            $bind = Get-RmBindAddress
+            $args = @('--interface', $bind) + $args
+            $via = "curl --interface $bind"
+        }
+
+        $body = & $curl @args
         $lines = @($body -split "`n")
         $code = $lines[-1].Trim()
         if ($code -notin '200', '201') {
-            throw "Upload of $Path failed via curl --interface $bind : HTTP $code — $($lines[0])"
+            throw "Upload of $Path failed ($via): HTTP $code — $($lines[0])"
         }
         return [pscustomobject]@{
             StatusCode = [int]$code
             Body       = ($lines[0..($lines.Count - 2)] -join "`n")
-            Via        = "curl --interface $bind"
+            Via        = $via
         }
     }
 
+    # No curl (pre-Windows-10). Try anyway and let the caller see the refusal.
     $splat = @{
         Uri = "$script:RmBaseUrl/upload"; Method = 'Post'
         Headers = @{ Origin = $script:RmBaseUrl; Referer = "$script:RmBaseUrl/" }
