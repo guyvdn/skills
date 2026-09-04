@@ -152,10 +152,13 @@ try {
         # Back up once (the pristine original) and every time (the last good one).
         Invoke-Rm "[ -f '$STAGE/templates.json.orig' ] || cp '$JSON' '$STAGE/templates.json.orig'; cp '$JSON' '$STAGE/templates.json.bak'"
 
-        $json = $doc | ConvertTo-Json -Depth 8
+        # NOT $json — PowerShell variable names are case-insensitive, so that
+        # would silently clobber $JSON, the remote path, and scp would try to
+        # upload *to* the file's own contents.
+        $jsonText = $doc | ConvertTo-Json -Depth 8
         # ConvertTo-Json escapes the backslash in the  icon code; undo that.
-        $json = $json -replace '\\\\u', '\u'
-        [System.IO.File]::WriteAllText($tmp, $json, (New-Object System.Text.UTF8Encoding($false)))
+        $jsonText = $jsonText -replace '\\\\u', '\u'
+        [System.IO.File]::WriteAllText($tmp, $jsonText, (New-Object System.Text.UTF8Encoding($false)))
         Push-Rm -Local $tmp -Remote $JSON
         Remove-Item $tmp -Force -ErrorAction SilentlyContinue -WhatIf:$false
 
