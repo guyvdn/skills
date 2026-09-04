@@ -55,16 +55,12 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$script:NoProxySupported = $PSVersionTable.PSVersion.Major -ge 6
+. (Join-Path $PSScriptRoot 'RemarkableWeb.ps1')
 $listScript = Join-Path $PSScriptRoot 'Get-RemarkableDocs.ps1'
 
 function Test-UsbTransport {
-    try {
-        $splat = @{ Uri = "$BaseUrl/documents/"; TimeoutSec = 10; ErrorAction = 'Stop' }
-        if ($script:NoProxySupported) { $splat['NoProxy'] = $true }
-        $null = Invoke-RestMethod @splat
-        return $true
-    } catch { return $false }
+    try { $null = Invoke-RmJson -Uri "$BaseUrl/documents/" -TimeoutSec 10; return $true }
+    catch { return $false }
 }
 
 function Get-RmapiExe {
@@ -114,9 +110,7 @@ function Export-One {
     if ($useUsb) {
         $uri = "$BaseUrl/download/$DocId/$Format"
         Write-Verbose "GET $uri"
-        $splat = @{ Uri = $uri; OutFile = $Destination; TimeoutSec = $TimeoutSec; ErrorAction = 'Stop' }
-        if ($script:NoProxySupported) { $splat['NoProxy'] = $true }
-        Invoke-WebRequest @splat | Out-Null
+        Save-RmFile -Uri $uri -OutFile $Destination -TimeoutSec $TimeoutSec
     }
     else {
         if ($Format -eq 'rmdoc') { throw 'rmdoc export is USB-only. Use -Format pdf over the cloud.' }

@@ -61,12 +61,29 @@ Get-NetRoute -AddressFamily IPv4 |
 Two rows for `10.11.99.0/27` — one on the VPN at metric 1, one on the tablet's adapter
 at metric 256 — is the signature.
 
-Two fixes:
+### The fix: bind the source address — no admin, no disconnect
 
-- **Disconnect the VPN.** Simplest, always works, costs you the VPN.
-- **Add a more specific route** — a `/32` beats a `/27` regardless of metric, so this
-  works while the VPN stays connected. Needs an elevated shell; `ActiveStore` keeps it
-  non-persistent so it vanishes on reboot and changes nothing permanently:
+**The scripts already do this.** Binding the request's *source address* to the host's
+own `10.11.99.x` address makes Windows select that interface for egress, which
+sidesteps the stolen route entirely. It needs no elevation and leaves the VPN up:
+
+```powershell
+curl.exe --interface 10.11.99.6 --noproxy '*' http://10.11.99.1/documents/   # 200
+curl.exe                        --noproxy '*' http://10.11.99.1/documents/   # times out
+```
+
+`Invoke-WebRequest` cannot bind a source address, which is why `RemarkableWeb.ps1`
+falls back to `curl.exe` (shipped with Windows 10+). It **probes once** and caches
+the answer: a per-request retry would burn the full timeout on every folder of a
+recursive walk, turning a 6-second listing into minutes.
+
+Verified with AnyConnect connected and owning the route: a 96-entry tree walk, a
+notebook export and an upload all succeeded, unattended.
+
+### Fallbacks, if that somehow fails
+
+- **A more specific route.** A `/32` beats a `/27` regardless of metric. Needs an
+  elevated shell; `ActiveStore` keeps it non-persistent:
 
   ```powershell
   # <ifIndex> is the NDIS adapter's ifIndex from §1
@@ -74,9 +91,9 @@ Two fixes:
                -NextHop 0.0.0.0 -RouteMetric 1 -PolicyStore ActiveStore
   ```
 
-  Some always-on VPN configurations monitor and remove added routes, and some block
-  off-tunnel traffic outright. If the `/32` route does not stick or does not help,
-  disconnect the VPN — do not keep fighting it.
+  Some always-on VPN configurations monitor and remove added routes.
+
+- **Disconnect the VPN.** Always works, costs you the VPN.
 
 ## 3. The web interface toggle is off
 

@@ -41,31 +41,13 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# PowerShell 7 can bypass the system proxy per request; 5.1 cannot, and a
-# corporate proxy will happily swallow a request to 10.11.99.1.
-$script:NoProxySupported = $PSVersionTable.PSVersion.Major -ge 6
+# Proxy opt-out, the UTF-8-behind-an-ISO-8859-1-header fix, and the VPN
+# source-binding fallback all live in the shared transport.
+. (Join-Path $PSScriptRoot 'RemarkableWeb.ps1')
 
 function Invoke-RmWeb {
     param([string] $Uri)
-
-    # The tablet declares 'application/json; charset=ISO-8859-1' but actually
-    # sends UTF-8. Invoke-RestMethod believes the header, so every accented
-    # character and en dash comes back as mojibake ("Analyse-Dev-Test" becomes
-    # "Analyseâ€“Devâ€“Test"). Read the raw bytes and decode them ourselves.
-    $splat = @{ Uri = $Uri; TimeoutSec = $TimeoutSec; ErrorAction = 'Stop' }
-    if ($script:NoProxySupported) { $splat['NoProxy'] = $true }
-    $resp = Invoke-WebRequest @splat
-
-    $bytes = if ($resp.RawContentStream) {
-        $ms = New-Object System.IO.MemoryStream
-        $resp.RawContentStream.Position = 0
-        $resp.RawContentStream.CopyTo($ms)
-        $ms.ToArray()
-    }
-    elseif ($resp.Content -is [byte[]]) { $resp.Content }         # Windows PowerShell 5.1
-    else { [System.Text.Encoding]::GetEncoding('ISO-8859-1').GetBytes($resp.Content) }
-
-    [System.Text.Encoding]::UTF8.GetString($bytes) | ConvertFrom-Json
+    Invoke-RmJson -Uri $Uri -TimeoutSec $TimeoutSec
 }
 
 function Test-UsbTransport {
@@ -153,8 +135,9 @@ Check, in order:
        Get-NetAdapter | Where-Object InterfaceDescription -match 'NDIS'
   3. Nothing else owns the 10.11.99.0/27 route -- a VPN commonly does:
        Find-NetRoute -RemoteIPAddress 10.11.99.1 | Select-Object -First 1 InterfaceAlias
-     If that names your VPN rather than the tablet's adapter, see
-     references/troubleshooting.md ("A VPN steals the tablet's subnet").
+     A VPN naming itself there is normally handled automatically (the transport
+     binds to the tablet's interface), so if you are seeing this the tablet
+     itself is not answering. See references/troubleshooting.md.
 "@
 }
 

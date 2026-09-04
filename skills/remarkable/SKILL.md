@@ -187,8 +187,23 @@ body fails with the overage in points rather than quietly drawing past the botto
 because a clipped template reads as a design choice on the device rather than a bug.
 
 Always render `--preview` and look at it before shipping a template. Details —
-grey levels for e-ink, line gaps, the spec reference, and how to get the file onto
-the tablet — are in [references/templates.md](references/templates.md).
+grey levels for e-ink, line gaps and the spec reference — are in
+[references/templates.md](references/templates.md).
+
+Put it on the tablet with:
+
+```powershell
+powershell -File skills/remarkable/scripts/Add-RemarkableFile.ps1 -Path .\Standup.pdf
+powershell -File skills/remarkable/scripts/Add-RemarkableFile.ps1 -Path .\*.pdf -Folder 'Templates'
+```
+
+`-WhatIf` dry-runs it. **This is the one thing in the skill that writes to the
+device — confirm with the user before running it**, and note the tablet keeps the
+`.pdf` extension in the document's visible name, unlike a notebook.
+
+To prove a template actually loaded, export it straight back: if
+`/download/<guid>/pdf` returns the right page count and geometry, the device
+parsed and rendered it.
 
 ## Notes and limits
 
@@ -196,6 +211,7 @@ the tablet — are in [references/templates.md](references/templates.md).
   a manual, on-device action. It cannot be scripted, over either transport. When a
   user wants a permanent typed copy of one page, that is the better tool — suggest it.
 - `VissibleName` is the tablet's own spelling of the title field. Not a typo to fix.
-- The USB web interface is read-mostly and unauthenticated on a link-local network;
-  anything on that subnet can read every notebook while it is enabled.
-- Nothing here writes to the tablet. Uploads are deliberately out of scope.
+- The USB web interface is unauthenticated on a link-local network; anything on
+  that subnet can read every notebook while it is enabled.
+- **`Add-RemarkableFile.ps1` is the only script that writes to the tablet.**
+  Everything else is read-only. There is no delete — remove files on the device.
