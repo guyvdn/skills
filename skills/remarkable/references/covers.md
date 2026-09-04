@@ -1,141 +1,150 @@
 # Cover pages
 
 A notebook's first page is its thumbnail in the library. A ruled page makes every
-notebook look like every other notebook; a bold drawing makes the right one findable
-at a glance. That is the whole point of this — it is a **navigation** feature, not
-decoration, and every design decision below follows from the thumbnail being about
-**20 mm wide**.
+notebook look like every other notebook; a bold cover makes the right one findable at
+a glance. This is a **navigation** feature, not decoration, and every decision below
+follows from one number: the thumbnail is about **20 mm wide**, which is **118 px**.
 
 ```bash
 python skills/remarkable/scripts/make_template.py \
     skills/remarkable/templates/cover.json -o dev-leads.pdf \
-    --title "Dev leads" --emoji "💻📊💡🐛" \
+    --title "Dev leads" --emoji "👥" \
     --template "Dev leads.template" --preview cover.png
 ```
 
-That is one spec file for every cover you will ever make. Do not copy `cover.json`
-per notebook — override `--title` and `--emoji` instead.
+One spec file for every cover you will ever make. Do not copy `cover.json` per
+notebook — override `--title` and `--emoji`.
 
-## What it draws
+## The design, and what was cut to get there
 
 ```
 ┌──────────────────────────┐
-│      DEV LEADS           │  banner: grey band, title as filled outlines
-├──────────────────────────┤
-│      💻        📊         │  the emoji, fitted to a grid that fills
-│                          │  the panel — cells kept roughly square
-│      💡        🐛         │
-├──────────────────────────┤
-│   ─────────────────      │  footer: a rule to write a date or a period on
-└──────────────────────────┘
+│      DEV LEADS           │  title: caps, Helvetica-Bold outlines, black
+│                          │
+│                          │
+│          ⬤⬤             │  one emoji, solid, 0.70 of the page width
+│                          │
+│                          │
+└──────────────────────────┘   no frame, no band, no rule, no date line
 ```
 
-One to six emoji works best. Columns are chosen so the cells come out roughly
-square, so two emoji stack on this tall panel rather than sitting in a row with dead
-space above and below; a short last row is centred. `--emoji-style outline` draws them
-hollow instead of filled, if solid black is too heavy for you.
+Two marks, pure black on white, clear space between them. Everything else was tried
+and removed, each for a measured reason at 118 px:
 
-**One emoji at full size is the most legible thumbnail.** At 20 mm wide, four emoji are
-already small; six is the practical limit.
+| Cut | Why |
+|---|---|
+| Rounded frame | Costs contrast, adds a third thing to parse, invisible at thumbnail size |
+| Grey title banner | Drops the title from black-on-white to black-on-grey — measurably weaker |
+| Hollow (stroked) emoji | A 4 pt stroke is 1.1 px; the silhouette turns into a grey scribble |
+| Rule under the title | Renders as a hard 1 px bar that competes with the artwork and says nothing |
+| Footer date rule | Simply invisible |
+| Multiple emoji | Four emoji drop to ~40 px each and stop being distinguishable |
 
-## Where the emoji come from
+**Caps beat sentence case.** All-caps is an even-weight solid block; lowercase
+counters and ascenders fill in first as the render shrinks.
 
-The system emoji font, as **outlines** — on Windows that is Segoe UI Emoji
-(`seguiemj.ttf`), a colour COLR/CPAL font whose *base* glyph layer is a clean black
-silhouette. Extracting outlines rather than rendering the font normally is what gets
-that layer, and it happens to be exactly what a 16-level greyscale panel wants. The
-lookup order is in `rm_glyphs.EMOJI_FONTS`; Apple Color Emoji and Noto Emoji are the
+**The shape carries the recognition, the word confirms it.** Across thirty-five
+notebooks you find the right one by silhouette before you read anything, which is why
+the emoji gets 0.70 of the page width and the title is capped rather than maximised.
+
+## Picking the emoji
+
+**Prefer a solid mass.** Ring-shaped glyphs — 🧭 compass, ⚙ gear, 🎯 target — all
+collapse into the same dark donut at thumbnail size and become indistinguishable from
+each other. That is the exact failure mode for a navigation aid.
+
+Emoji come from the **system emoji font as outlines**. On Windows that is Segoe UI
+Emoji (`seguiemj.ttf`), a colour COLR/CPAL font whose *base* glyph layer is a clean
+black silhouette; extracting outlines rather than rendering the font normally is what
+gets that layer, and it happens to be exactly what a 16-level greyscale panel wants.
+The lookup order is `rm_glyphs.EMOJI_FONTS`, with Apple Color Emoji and Noto Emoji as
 fallbacks.
 
 **Single code points only.** A ZWJ sequence such as 👨‍💻 is composed at render time
 from several glyphs and has no single outline to take, so it comes back empty — the
-generator says so on stderr rather than silently drawing nothing. Use 💻 instead.
+generator says so on stderr rather than silently drawing nothing. Use 💻.
 
-Emoji are fitted by their **ink bounding box**, not their advance width. Fonts give
-emoji wildly different extents, and placing them on advance width alone leaves a row
-visibly uneven.
+The emoji is fitted by its **ink bounding box**, not its advance width, so a
+taller-than-wide glyph still lands centred.
 
-## The drawn icons (the older route)
+## The numbers
 
-`--icons` uses a small hand-drawn library instead of emoji, laid out as a collage:
-first icon large in the centre, the rest in the corners, then the sides. It predates
-the emoji route and is kept because the grey fills are lighter on the eye than solid
-silhouettes. **Prefer `--emoji`** — it has thousands of shapes, needs no maintenance,
-and is drawn by people who can draw.
+| | |
+|---|---|
+| Page | 445 x 594 pt |
+| Side margins | 44 pt, symmetric |
+| Title cap top | 54 pt (`margin_top`) |
+| Title size | `min(measure / advance(title, 1.0, tracking=0.04), 78)` |
+| Title tracking | 0.04 em |
+| Baseline | `cap_top + 0.717 * size` — Helvetica's cap height, not the em box |
+| Emoji box | 0.70 x page width, centred in the space below the title |
+| Gap under the title | 40 pt |
+| Tone | black only |
 
-`--list-icons` prints the names. `--icon-sheet sheet.pdf` draws all of them on one
-captioned page — use that to choose, and **use it as the regression test after
-editing `rm_icons.py`**. Four icons shipped visibly broken in the first draft and the
-contact sheet is what caught all four; a spec file never would have.
+**Margins are 44 pt, not 26.** 26 gives a bigger title (65 pt versus 59 pt, a cap
+height of 12.4 px versus 11.2 at thumbnail size) but the pinned toolbar floats over
+the left 44 pt of the page and would sit on the "D" whenever the notebook is open.
+The thumbnail is unaffected either way, so this trade buys a clean-looking page for
+about a pixel of cap height.
 
-Adding one is a function in `rm_icons.py` with an `@icon("name")` decorator, drawing
-in a **unit box**: `0..1` left to right and top to bottom, same direction as the page.
-Everything goes through `IconPen`, so an icon never knows whether it is ending up in a
-PDF or in the device's DSL.
-
-Two conventions that will trip you up:
-
-- **Angles are counter-clockwise with 0 at 3 o'clock, so 90 is the top** — even though
-  `v` grows downwards. `arc_pts(cx, cy, r, r, 210, -30)` sweeps over the crown;
-  `210, 330` draws the *bottom* instead. That bug shipped a lightbulb that looked
-  like a tulip.
-- **`rrect_pts` walks clockwise in four seven-point corners**, TL, TR, BR, BL. To hang
-  a speech-bubble tail off the bottom edge you splice it in after index 20; appending
-  it at the end draws a line back across the bubble.
-
-For a silhouette made of overlapping circles — a cloud — use `lobes()`, which solves
-for the real circle-circle intersections. Guessing the hand-over angles by eye leaves
-a notch or a spike, which is exactly what the first cloud did twice.
+**The title size is capped at 78 pt.** Without a cap a short title like "Ops" is set
+at 130 pt and reads as shouting rather than as a label.
 
 ## Why the title is drawn as shapes, not text
 
-`rm_glyphs.outlines()` renders the title in Helvetica-Bold and hands back **filled
-glyph outlines**, and the cover draws those. It looks like a heavier route than a
-`text` item, and it is the safer one:
+`rm_glyphs.outlines()` renders it in Helvetica-Bold and hands back **filled glyph
+outlines**. This looks like the heavier route and is the safer one:
 
-- The template DSL has **no font selection and no bold**. A `text` item gets whatever
-  face the firmware picks, at whatever weight — so the PDF preview and the installed
-  template would not match.
-- `fontSize` is the field that already cost this skill an afternoon: a non-integer
-  makes the device reject the entire file and render the template **blank**, with no
-  error in the UI. A cover with no text items cannot hit that at all — check with
-  `grep '"type": "text"' Cover.template` and expect nothing.
+- The template DSL has **no font selection and no bold**, so a `text` item would get
+  whatever face the firmware picks — the PDF preview and the installed template
+  would not match.
+- `fontSize` already cost this skill an afternoon: a non-integer makes the device
+  reject the entire file and render the template **blank**, with nothing in the UI to
+  say so. A cover has **zero text items**, so it cannot hit that at all. Check with
+  `grep '"type": "text"' Cover.template` and expect nothing back.
 
-The counters — the hole in a D — are separate subpaths wound the other way, so the
-whole set is filled as **one shape with an even-odd rule**. Filled one at a time they
-come out solid.
-
-The title auto-shrinks to fit the banner, so a long name silently gets smaller rather
-than overflowing. Titles of one or two short words read best; `Dev leads` is fine,
-`Q3 platform migration steering` is not.
+Counters — the hole in a D — are separate subpaths wound the other way, so the whole
+set is filled as **one shape with an even-odd rule**. Filled one at a time they come
+out solid.
 
 ## Installing it
 
-A cover is a **template**, so it goes on with the normal supported route:
+A cover is a **template**, installed the normal supported way:
 
 ```powershell
 powershell -File skills/remarkable/scripts/Add-RemarkableCustomTemplate.ps1 `
     -Template '.\Dev leads.template' -Password '<from the device>'
 ```
 
-Then on the tablet: open the notebook, **page 1**, template picker, pick it. Set it as
-the notebook's default only if you want the artwork on every page, which you almost
-certainly do not.
+Then on the tablet: open the notebook, **page 1**, template picker, pick it. Do not
+set it as the notebook default unless you want the artwork behind every page.
 
-The picker fills up with one entry per notebook, so give them a shared prefix or put
-them in their own category — `cover.json` sets `"category": "Covers"`.
+The picker gains one entry per covered notebook, so `cover.json` files them under a
+`Covers` category. That is the real cost of this approach — see the note at the end.
 
-You cannot get a cover into a notebook any other way. An imported PDF is its own
-document and cannot be merged into an existing notebook, so the PDF output here is for
-previewing the design, not for shipping it.
+You cannot get a cover in any other way today. An imported PDF is its own document and
+cannot be merged into an existing notebook, so the PDF output here is for previewing
+the design, not for shipping it.
 
-## Numbers worth knowing
+## The drawn-icon route, kept but not preferred
 
-| | |
-|---|---|
-| Cover template file size | ~20-80 kB depending on the artwork |
-| Stock reMarkable template | ~1 kB |
-| Text items in a cover | **zero** — that is the point |
+`--icons` uses a small hand-drawn library (`rm_icons.py`, `--list-icons`,
+`--icon-sheet sheet.pdf`) instead of an emoji. It predates the emoji route. **Use
+`--emoji`** — thousands of shapes, no maintenance, drawn by people who can draw.
 
-78 kB is nothing on the device, but it is two orders of magnitude past a stock
-template, so do not be alarmed by it and do not conclude something has gone wrong.
+If you do edit `rm_icons.py`, regenerate the contact sheet and look at it. Four icons
+shipped visibly broken in the first draft and the sheet is what caught all four. Two
+conventions bite: **angles are counter-clockwise with 0 at 3 o'clock, so 90 is the
+top** even though `v` grows downwards; and **`rrect_pts` walks clockwise in four
+seven-point corners**, so a speech-bubble tail splices in after index 20 rather than
+being appended. For a silhouette of overlapping circles use `lobes()`, which solves
+the real intersections — guessed hand-over angles leave a notch or a spike.
+
+## The open design question
+
+A cover is a template, so covering many notebooks means many picker entries. The
+alternative is writing the cover into the notebook's own first page as **ink**, which
+needs a `.rm` v6 writer (`rmscene` can do it) plus an insert into `cPages.pages` in
+`.content` with a fractional index that sorts before the current first page. That is
+verified as possible but not built. The `.rmdoc` download is a plain zip of
+`.content`, `.metadata` and the page `.rm` files, which is the safest place to do it.

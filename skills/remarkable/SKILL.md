@@ -237,21 +237,35 @@ generator, a `cover` block:
 ```bash
 python skills/remarkable/scripts/make_template.py \
     skills/remarkable/templates/cover.json -o dev-leads.pdf \
-    --title "Dev leads" --emoji "💻📊💡🐛" \
+    --title "Dev leads" --emoji "👥" \
     --template "Dev leads.template" --preview cover.png
 ```
 
-Framed page, grey title banner, the emoji fitted to a grid that fills the panel, and a
-footer rule to date it. `cover.json` is the only spec you need; override `--title` and
-`--emoji` rather than copying it per notebook. One emoji at full size makes the most
-legible thumbnail; six is the practical limit.
+A caps title at the top and **one** emoji filling the middle. Nothing else — no frame,
+no band, no rules. `cover.json` is the only spec you need; override `--title` and
+`--emoji` rather than copying it per notebook.
 
-The emoji come from the **system emoji font as outlines** — Segoe UI Emoji on Windows,
-whose base glyph layer is a clean black silhouette, which is what a greyscale panel
-wants. **Single code points only**: a ZWJ sequence like the technologist emoji is
-composed from several glyphs, has no single outline, and comes back empty with a note
-on stderr. `--emoji-style outline` draws them hollow. `--icons` is an older hand-drawn
-library, kept but not preferred — see [references/covers.md](references/covers.md).
+That austerity is the design, not laziness. The thumbnail is **118 px wide**, and at
+that size a frame costs contrast, a grey title band drops the title to black-on-grey,
+a stroked emoji collapses into a scribble, and a second emoji halves both. The
+silhouette is what finds the notebook; the word only confirms it.
+
+**Pick an emoji with a solid mass.** Ring shapes — compass, gear, target — all
+collapse into the same dark donut and stop being distinguishable from each other,
+which is the one thing a navigation aid must not do.
+
+Emoji come from the **system emoji font as outlines** — Segoe UI Emoji on Windows,
+whose base glyph layer is a clean black silhouette. **Single code points only**: a ZWJ
+sequence like the technologist emoji has no single glyph and comes back empty, with a
+note on stderr. `--icons` is an older hand-drawn library, kept but not preferred — see
+[references/covers.md](references/covers.md).
+
+**Always look at the preview at thumbnail size, not full size**, since that is where
+the design either works or does not:
+
+```python
+pymupdf.open("dev-leads.pdf")[0].get_pixmap(matrix=pymupdf.Matrix(118/445, 118/445)).save("thumb.png")
+```
 
 Install it as a template (`Add-RemarkableCustomTemplate.ps1`), then apply it to page 1
 in the picker. **The PDF output is for previewing only** — an imported PDF is its own

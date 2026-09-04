@@ -26,7 +26,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import rm_glyphs                                    # noqa: E402
 import rm_icons                                     # noqa: E402
-from rm_icons import rrect_pts                      # noqa: E402
 
 try:
     import pymupdf
@@ -228,19 +227,9 @@ def icon_svg(spec, cfg, margin_left, margin_right):
              f'fill="none" stroke="black" stroke-width="4"/>']
 
     if any(b.get("type") == "cover" for b in blocks):
-        # A cover's schematic is the poster itself: banner, hero, footer rule.
-        n = len(next(b for b in blocks if b.get("type") == "cover").get("icons") or [])
-        parts.append('<rect x="10" y="10" width="130" height="34" fill="black"/>')
-        parts.append('<circle cx="75" cy="112" r="26" fill="none" '
-                     'stroke="black" stroke-width="5"/>')
-        for i, (cx, cy) in enumerate(((30, 72), (120, 72), (30, 152), (120, 152),
-                                      (75, 62), (30, 112), (120, 112), (75, 162))):
-            if i >= max(n - 1, 0):
-                break
-            parts.append(f'<circle cx="{cx}" cy="{cy}" r="12" fill="none" '
-                         f'stroke="black" stroke-width="4"/>')
-        parts.append('<line x1="10" y1="176" x2="140" y2="176" '
-                     'stroke="black" stroke-width="4"/>')
+        # The schematic is the cover itself: a title bar and one mass.
+        parts.append('<rect x="18" y="16" width="114" height="26" fill="black"/>')
+        parts.append('<circle cx="75" cy="118" r="46" fill="black"/>')
         return ('<svg width="150" height="200" viewBox="0 0 150 200" fill="none" '
                 'xmlns="http://www.w3.org/2000/svg">' + "".join(parts) + "</svg>")
 
@@ -491,119 +480,91 @@ def render_rule(cv, spec, x, y, w, h, cfg):
 SAT_SLOTS = (135, 45, 180, 0, -135, -45, 90, -90)
 
 
-def render_emoji_grid(cv, chars, x, y, w, h, spec):
-    """Emoji, fitted to a grid that fills the panel.
+# Title cap height as a fraction of the em, for Helvetica. Positioning an
+# all-caps line on this rather than on the em box is what stops it sitting
+# visibly low inside its slot.
+CAP_HEIGHT = 0.717
 
-    Columns are chosen so the cells come out roughly square, which is what
-    stops two emoji from sitting side by side on a tall panel with a band of
-    dead space above and below them.
-    """
-    n = len(chars)
-    cols = max(1, min(n, round(math.sqrt(n * w / h)) or 1))
-    rows = -(-n // cols)
-    cw, ch = w / cols, h / rows
-    inset = float(spec.get("emoji_inset", 0.86))
-    style = str(spec.get("emoji_style", "solid")).lower()
+# The title stops growing here however short it is. Without a cap, "Ops" would
+# be set at 130 pt and read as shouting rather than as a label.
+TITLE_MAX = 78.0
 
-    for i, c in enumerate(chars):
-        r, col = divmod(i, cols)
-        in_row = min(cols, n - r * cols)
-        # Centre a short last row instead of leaving it left-aligned.
-        row_x = x + (w - in_row * cw) / 2
-        bw, bh = cw * inset, ch * inset
-        sub = rm_glyphs.emoji_outlines(
-            c, bw, bh,
-            row_x + col * cw + (cw - bw) / 2, y + r * ch + (ch - bh) / 2)
-        if not sub:
-            print(f"note: no glyph for {c!r} — a ZWJ sequence has no single "
-                  f"outline; use a plain single-code-point emoji.",
-                  file=sys.stderr)
-            continue
-        if style == "outline":
-            cv.shape(sub, ink=INK_LINE, width=max(min(cw, ch) * 0.022, 0.8),
-                     fill=(1.0, 1.0, 1.0))
-        else:
-            cv.shape(sub, fill=INK_LINE)
+# Emoji box, as a fraction of the page width. At 0.70 the silhouette spans
+# about 82 of the thumbnail's 118 px, which is what makes it register as a
+# shape before the title is legible as a word.
+EMOJI_FRACTION = 0.70
 
 
 def render_cover(cv, spec, x, y, w, h, cfg):
-    """A poster page: framed, a title banner, an icon collage, a footer line.
+    """Title at the top, one emoji in the middle. Nothing else.
 
-    This is the first page of a notebook, and its only job is to be
-    recognisable as a thumbnail in the library at about 20 mm wide. That is
-    why the title is heavy and short and the artwork is a handful of large
-    shapes rather than a detailed drawing — anything finer turns to mush.
+    The first page of a notebook is its thumbnail in the library, about 20 mm
+    wide, and the design follows entirely from that. Every element that was
+    here before — the frame, the grey title banner, the footer date rule —
+    was either invisible at that size or actively cost contrast:
+
+    - a grey band drops the title from black-on-white to black-on-grey, which
+      measurably weakens it at 118 px;
+    - a hollow (stroked) emoji collapses, because a 4 pt stroke is about 1 px;
+    - a rule renders as a hard 1 px bar that competes with the artwork and
+      carries no information.
+
+    So: two marks, pure black on white, with clear space between them. The
+    shape is what finds the notebook among thirty-five; the word confirms it.
+    Ring-shaped emoji (compass, gear, target) all collapse into the same dark
+    donut at thumbnail size — prefer a solid mass.
     """
     heading = str(spec.get("heading", spec.get("title", ""))).strip()
     if spec.get("uppercase", True):
         heading = heading.upper()
-    icons = spec.get("icons") or []
-    pad = float(spec.get("pad", 16.0))
-    r = float(spec.get("radius", 20.0))
-    stroke = float(spec.get("stroke", 2.2))
-
-    band_h = float(spec.get("banner_height", 0.0)) or max(h * 0.155, 52.0)
-    foot_h = float(spec.get("footer_height", 0.0)) or max(h * 0.115, 44.0)
-    band_y = y + band_h
-    foot_y = y + h - foot_h
-
-    # --- frame and banner ---
-    cv.shape([rrect_pts(x, y, x + w, y + h, r)], ink=INK_LINE, width=stroke)
-    # The banner is the frame's top corners plus a straight cut across, so it
-    # sits flush inside the rounded corner instead of poking out of it.
-    top = rrect_pts(x, y, x + w, y + h, r)
-    top = [p for p in top if p[1] < y + r + 0.01 or abs(p[0] - x) < 0.01
-           or abs(p[0] - (x + w)) < 0.01]
-    top = [p for p in top if p[1] <= band_y]
-    cv.shape([top + [(x + w, band_y), (x, band_y)]], fill=INK_BAND)
-    cv.line(x, band_y, x + w, band_y, INK_LINE, stroke)
 
     # --- title, drawn as outlines rather than as a font ---
+    base = y
     if heading:
-        tracking = float(spec.get("tracking", 0.02))
-        avail = w - 2 * pad
-        size = float(spec.get("title_size", 0.0)) or band_h * 0.60
-        while size > 6 and rm_glyphs.advance(heading, size, tracking=tracking) > avail:
-            size -= 0.5
+        tracking = float(spec.get("tracking", 0.04))
+        unit = rm_glyphs.advance(heading, 1.0, tracking=tracking)
+        size = float(spec.get("title_size", 0.0)) or min(
+            w / unit if unit else TITLE_MAX, float(spec.get("title_max", TITLE_MAX)))
         tw = rm_glyphs.advance(heading, size, tracking=tracking)
-        # Cap height for Helvetica is 0.717 em; centring on that rather than on
-        # the em box is what stops an all-caps title from sitting visibly low.
-        base = y + band_h / 2 + size * 0.717 / 2
+        base = y + CAP_HEIGHT * size
         cv.shape(rm_glyphs.outlines(heading, size, x + (w - tw) / 2, base,
                                     tracking=tracking), fill=INK_LINE)
-
-    # --- footer: a rule to write a date or a period on ---
-    cv.line(x, foot_y, x + w, foot_y, INK_LINE, stroke)
-    sub = str(spec.get("subtitle", "")).strip()
-    if sub:
-        ssize = float(spec.get("subtitle_size", 0.0)) or min(foot_h * 0.34, 15.0)
-        sw = rm_glyphs.advance(sub, ssize, tracking=0.02)
-        cv.shape(rm_glyphs.outlines(sub, ssize, x + (w - sw) / 2,
-                                    foot_y + foot_h / 2 + ssize * 0.36,
-                                    tracking=0.02), fill=INK_LINE)
-    elif spec.get("footer", True):
-        cv.line(x + pad * 1.6, foot_y + foot_h * 0.62,
-                x + w - pad * 1.6, foot_y + foot_h * 0.62, INK_LINE, 1.4)
 
     # --- the artwork ---
     emoji = spec.get("emoji")
     if isinstance(emoji, str):
         emoji = [c for c in emoji if not c.isspace()]
+    icons = spec.get("icons") or []
     if not icons and not emoji:
         return
-    ax0, ay0 = x + pad, band_y + pad
-    ax1, ay1 = x + w - pad, foot_y - pad
+
+    ax0, ay0 = x, base + float(spec.get("title_gap", 40.0))
+    ax1, ay1 = x + w, y + h
     aw, ah = ax1 - ax0, ay1 - ay0
     if aw <= 0 or ah <= 0:
         return
     cxc, cyc = ax0 + aw / 2, ay0 + ah / 2
-    scale = float(spec.get("icon_scale", 1.0))
-    weight = float(spec.get("icon_weight", 0.030))
 
     if emoji:
-        render_emoji_grid(cv, emoji, ax0, ay0, aw, ah, spec)
+        if len(emoji) > 1:
+            print(f"note: a cover shows one emoji; using the first of "
+                  f"{len(emoji)}.", file=sys.stderr)
+        box = min(PAGE_W * float(spec.get("emoji_scale", EMOJI_FRACTION)), aw, ah)
+        sub = rm_glyphs.emoji_outlines(emoji[0], box, box,
+                                       cxc - box / 2, cyc - box / 2)
+        if not sub:
+            print(f"note: no glyph for {emoji[0]!r} — a ZWJ sequence has no "
+                  f"single outline; use a plain single-code-point emoji.",
+                  file=sys.stderr)
+        elif str(spec.get("emoji_style", "solid")).lower() == "outline":
+            cv.shape(sub, ink=INK_LINE, width=max(box * 0.014, 0.8),
+                     fill=(1.0, 1.0, 1.0))
+        else:
+            cv.shape(sub, fill=INK_LINE)
         return
 
+    scale = float(spec.get("icon_scale", 1.0))
+    weight = float(spec.get("icon_weight", 0.030))
     unknown = [n for n in icons if n not in rm_icons.REGISTRY]
     if unknown:
         sys.exit(f"Unknown icon(s): {', '.join(unknown)}.\n"
@@ -828,8 +789,6 @@ def main() -> int:
                                     "'💡📊🐛'. Takes precedence over --icons")
     ap.add_argument("--emoji-style", choices=("solid", "outline"),
                     help="filled silhouettes (default) or hollow line art")
-    ap.add_argument("--subtitle", help="a line under the footer rule, instead "
-                                       "of leaving it blank to write on")
     ap.add_argument("--list-icons", action="store_true",
                     help="print the available cover icons and exit")
     ap.add_argument("--icon-sheet", type=Path, metavar="OUT.pdf",
@@ -862,10 +821,9 @@ def main() -> int:
     if args.title:
         spec["title"] = args.title
     covers = [b for b in spec.get("blocks", []) if b.get("type") == "cover"]
-    if args.icons or args.subtitle or args.emoji or args.emoji_style:
+    if args.icons or args.emoji or args.emoji_style:
         if not covers:
-            ap.error("--icons/--emoji/--subtitle only apply to a spec with a "
-                     "cover block")
+            ap.error("--icons/--emoji only apply to a spec with a cover block")
         for b in covers:
             if args.icons:
                 b["icons"] = [s.strip() for s in args.icons.split(",") if s.strip()]
@@ -873,8 +831,6 @@ def main() -> int:
                 b["emoji"] = args.emoji
             if args.emoji_style:
                 b["emoji_style"] = args.emoji_style
-            if args.subtitle:
-                b["subtitle"] = args.subtitle
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     for p in (args.preview, args.png, args.svg, args.template):

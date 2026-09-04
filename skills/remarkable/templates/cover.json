@@ -3,19 +3,20 @@
     "category": "Covers",
     "pages": 1,
 
-    "//": "A cover is artwork, not a writing surface, so the toolbar rule does not apply — it is symmetric and tight to the bezel. Override title and emoji on the command line rather than copying this file per notebook.",
+    "//": "A cover is a thumbnail, not a writing surface. Override title and emoji on the command line rather than copying this file per notebook.",
+    "//margins": "Symmetric 44 pt clears the pinned toolbar on either side and keeps the title centred on the page. margin_top is the cap top of the title.",
     "toolbar": "none",
-    "margin_x": 24,
-    "margin_top": 30,
-    "margin_bottom": 30,
+    "margin_x": 44,
+    "margin_top": 54,
+    "margin_bottom": 40,
 
     "blocks": [
         {
             "type": "cover",
             "fill": true,
 
-            "//": "Emoji come from the system emoji font as monochrome outlines. Single code points only. `icons` (the drawn library, see --list-icons) is the alternative and is used only when `emoji` is absent.",
-            "emoji": "💡"
+            "//": "One emoji, from the system emoji font, as monochrome outlines. Single code points only. Prefer a solid mass: ring shapes (compass, gear, target) all collapse into the same dark donut at thumbnail size.",
+            "emoji": "👥"
         }
     ]
 }
