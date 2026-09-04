@@ -249,7 +249,45 @@ licenses**, at the bottom with the IP. **It changes on every firmware update.**
 will fail. The installer pulls the file down, edits it here, and copies it back,
 which is also far safer than `sed`-ing JSON in place.
 
-#### There is a supported route, and this is not it
+#### The supported route: a custom-template library entry
+
+**Use this one.** `Add-RemarkableCustomTemplate.ps1` installs a template the way
+reMarkable's own Methods templates install, so it lives in `/home`, survives
+firmware updates and syncs to the cloud.
+
+A custom template is a **library entry**, like a notebook — `customtemplate.cpp`
+sits under `src/entry/` in xochitl. It is four files in
+`/home/root/.local/share/remarkable/xochitl/`, and **no `templates.json`
+anywhere**:
+
+```
+<uuid>.metadata               {"type": "TemplateType", "visibleName": "Standup",
+                               "source": "com.remarkable.methods", ...}
+<uuid>.content                {}
+<uuid>.template               the DSL, plus base64 iconData
+<uuid>.thumbnails/1-0-1.svg   the same 150x200 icon, unencoded
+```
+
+`iconData` is a base64 150x200 SVG shown in the picker — a *schematic* of the
+layout (outlined regions, no text), not a rendering of the page.
+`make_template.py --template` generates it and writes the matching
+`.icon.svg` beside the template; the installer picks that up automatically.
+
+This schema was read off a real Methods template rather than guessed. If you
+need to re-derive it on newer firmware, install one template from
+<https://methods.remarkable.com> through the app and read the entry it creates:
+
+```bash
+ssh root@10.11.99.1 'grep -l TemplateType /home/root/.local/share/remarkable/xochitl/*.metadata'
+```
+
+```powershell
+.\Add-RemarkableCustomTemplate.ps1 -Template .\Standup.template -Password '<from the device>'
+.\Add-RemarkableCustomTemplate.ps1 -List -Password '<...>'
+.\Add-RemarkableCustomTemplate.ps1 -Name Standup -Uninstall -Password '<...>'
+```
+
+#### The legacy route, for reference
 
 Newer firmware has a **first-class custom-template system**, and templates from
 <https://methods.remarkable.com> installed through the app use it. Evidence on
@@ -271,14 +309,10 @@ system directory. It lives under `/home/root/.local/share/remarkable/`, which is
 why it survives updates and syncs to the cloud. The device also keeps its own
 manifest at `templates/import/templates.json`.
 
-**Prefer that route when you can.** The `/usr/share` + `templates.json` method
-below is the legacy one that every older guide describes; it works, and it is
-what this installer does, but it is wiped by firmware updates.
-
-Replicating the supported route means writing a `CustomTemplate` library entry,
-whose schema is not documented. The practical way to learn it is to install one
-template from Methods through the app and read the entry it creates — there is
-nothing to copy from until at least one exists.
+`Install-RemarkableTemplate.ps1` writes into `/usr/share/remarkable/templates/`
+and edits its `templates.json`. That is what every older guide describes, and it
+works — but `/usr/share` is part of the system image, so a firmware update wipes
+it. Reach for it only on firmware with no `CustomTemplate` support.
 
 #### Why the legacy route does not survive updates
 

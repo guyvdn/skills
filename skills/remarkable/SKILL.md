@@ -195,12 +195,15 @@ Two ways to use the result, and they are different things:
   notebook default. `--template` emits reMarkable's own vector DSL and
   `Install-RemarkableTemplate.ps1` installs it over SSH.
 
-  Note this installs by the **legacy** `/usr/share` + `templates.json` route,
-  which a firmware update wipes (`-Relink` restores it). Newer firmware has a
-  supported custom-template system — templates from methods.remarkable.com use
-  it, they are library entries under `/home`, and they do survive updates. See
-  [references/templates.md](references/templates.md) before running the
-  installer.
+  Two installers, and the choice matters:
+
+  - `Add-RemarkableCustomTemplate.ps1` — **the supported route.** Installs it as
+    a library entry, the same way methods.remarkable.com templates install. Lives
+    in `/home`, survives firmware updates, syncs. Use this.
+  - `Install-RemarkableTemplate.ps1` — the legacy `/usr/share` + `templates.json`
+    route every older guide describes. Works, but a firmware update wipes it.
+
+  See [references/templates.md](references/templates.md) before running either.
 
 The generator **refuses to overflow**: a spec that needs more room than the page
 body fails with the overage in points rather than quietly drawing past the bottom,

@@ -17,6 +17,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import sys
 from pathlib import Path
@@ -171,6 +172,53 @@ class PdfCanvas(Canvas):
             yy += step
 
 
+def icon_svg(spec, cfg, margin_left, margin_right):
+    """A 150x200 schematic of the layout, for the template picker.
+
+    reMarkable's own Methods templates carry one of these as base64 in
+    `iconData`, and the same SVG again as the entry's thumbnail. It is a
+    diagram of the page, not a rendering of it — outlined regions, no text.
+    """
+    W, H = 150.0, 200.0
+    blocks = spec.get("blocks", [])
+    body_h = PAGE_H - cfg["margin_top"] - cfg["margin_bottom"]
+    sx, sy = W / PAGE_W, H / PAGE_H
+
+    fixed = sum(natural_height(b, cfg) for b in blocks if not b.get("fill"))
+    fixed += cfg["gap"] * max(len(blocks) - 1, 0)
+    fillers = [b for b in blocks if b.get("fill")]
+    each = max(body_h - fixed, 0.0) / len(fillers) if fillers else 0.0
+
+    parts = [f'<rect x="2" y="2" width="{W-4:g}" height="{H-4:g}" '
+             f'fill="none" stroke="black" stroke-width="4"/>']
+
+    y = cfg["margin_top"]
+    for b in blocks:
+        h = each if b.get("fill") else natural_height(b, cfg)
+        bx, bw = margin_left, PAGE_W - margin_left - margin_right
+        if b.get("type") == "row":
+            cols = b["columns"]
+            total = sum(float(c.get("width", 1)) for c in cols)
+            cx = bx
+            for c in cols:
+                cw = (bw - cfg["gap"] * (len(cols) - 1)) * float(c.get("width", 1)) / total
+                parts.append(f'<rect x="{cx*sx:.1f}" y="{y*sy:.1f}" '
+                             f'width="{cw*sx:.1f}" height="{h*sy:.1f}" '
+                             f'fill="none" stroke="black" stroke-width="3"/>')
+                cx += cw + cfg["gap"]
+        elif b.get("type") == "header":
+            parts.append(f'<rect x="{bx*sx:.1f}" y="{y*sy:.1f}" '
+                         f'width="{bw*sx:.1f}" height="{h*sy:.1f}" fill="black"/>')
+        else:
+            parts.append(f'<rect x="{bx*sx:.1f}" y="{y*sy:.1f}" '
+                         f'width="{bw*sx:.1f}" height="{h*sy:.1f}" '
+                         f'fill="none" stroke="black" stroke-width="3"/>')
+        y += h + cfg["gap"]
+
+    return ('<svg width="150" height="200" viewBox="0 0 150 200" fill="none" '
+            'xmlns="http://www.w3.org/2000/svg">' + "".join(parts) + "</svg>")
+
+
 def _hex(ink):
     return "#{:02x}{:02x}{:02x}".format(*(int(round(c * 255)) for c in ink))
 
@@ -257,8 +305,9 @@ class TemplateCanvas(Canvas):
             }],
         })
 
-    def document(self, name, category, orientation="portrait"):
-        return {
+    def document(self, name, category, icon=None, labels=None,
+                 orientation="portrait"):
+        doc = {
             "name": name,
             "author": "make_template.py",
             "templateVersion": "1.0.0",
@@ -267,6 +316,14 @@ class TemplateCanvas(Canvas):
             "orientation": orientation,
             "items": self.items,
         }
+        if labels:
+            doc["labels"] = labels
+        if icon:
+            # Key order matters only for readability; the device does not care.
+            doc = {**{k: doc[k] for k in ("name", "author")},
+                   "iconData": base64.b64encode(icon.encode("utf-8")).decode("ascii"),
+                   **{k: v for k, v in doc.items() if k not in ("name", "author")}}
+        return doc
 
 
 # --- block renderers ---------------------------------------------------------
@@ -482,10 +539,15 @@ def build(spec, out_path, pages=None, preview=None,
     if template:
         tcv = TemplateCanvas(cfg)
         layout(tcv, spec.get("blocks", []), x, y, w, avail, cfg)
+        svg_icon = icon_svg(spec, cfg, margin_left, margin_right)
         doc_json = tcv.document(spec.get("title", Path(template).stem),
-                                spec.get("category", "Custom"))
+                                spec.get("category", "Custom"),
+                                icon=svg_icon,
+                                labels=spec.get("labels"))
         Path(template).write_text(json.dumps(doc_json, indent=4, ensure_ascii=False),
                                   encoding="utf-8")
+        # The picker thumbnail is the same SVG, unencoded, next to the entry.
+        Path(template).with_suffix(".icon.svg").write_text(svg_icon, encoding="utf-8")
 
     doc.close()
     return n_pages
