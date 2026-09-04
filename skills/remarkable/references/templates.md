@@ -249,7 +249,38 @@ licenses**, at the bottom with the IP. **It changes on every firmware update.**
 will fail. The installer pulls the file down, edits it here, and copies it back,
 which is also far safer than `sed`-ing JSON in place.
 
-#### Why it survives updates, and what it does not
+#### There is a supported route, and this is not it
+
+Newer firmware has a **first-class custom-template system**, and templates from
+<https://methods.remarkable.com> installed through the app use it. Evidence on
+the device:
+
+```bash
+strings /usr/bin/xochitl | grep -i customtemplate
+#   src/entry/src/customtemplate.cpp
+#   addCustomTemplate / removeCustomTemplate / updateCustomTemplate
+#   customTemplateId / customTemplateIds
+strings /usr/bin/xochitl | grep '/templates/'
+#   {}/../templates/custom/
+#   {}/../templates/import/
+```
+
+`customtemplate.cpp` sits under `src/entry/` — the same place as notebooks and
+PDFs — so **a custom template is a library entry**, not a file dropped into a
+system directory. It lives under `/home/root/.local/share/remarkable/`, which is
+why it survives updates and syncs to the cloud. The device also keeps its own
+manifest at `templates/import/templates.json`.
+
+**Prefer that route when you can.** The `/usr/share` + `templates.json` method
+below is the legacy one that every older guide describes; it works, and it is
+what this installer does, but it is wiped by firmware updates.
+
+Replicating the supported route means writing a `CustomTemplate` library entry,
+whose schema is not documented. The practical way to learn it is to install one
+template from Methods through the app and read the entry it creates — there is
+nothing to copy from until at least one exists.
+
+#### Why the legacy route does not survive updates
 
 `/usr/share/remarkable/templates/` is part of the system image, so a firmware
 update **replaces the whole directory** — your template files and the

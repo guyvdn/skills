@@ -192,10 +192,15 @@ Two ways to use the result, and they are different things:
 - **As a PDF** — supported, no device changes, but a fixed page count.
   `Add-RemarkableFile.ps1` puts it on the tablet.
 - **As a real template** — unlimited pages, pickable per page, settable as a
-  notebook default. Needs SSH, and a firmware update wipes it.
-  `--png`/`--svg` produce the assets; `Install-RemarkableTemplate.ps1` installs
-  them so they can be re-linked after an update. See
-  [references/templates.md](references/templates.md) before running it.
+  notebook default. `--template` emits reMarkable's own vector DSL and
+  `Install-RemarkableTemplate.ps1` installs it over SSH.
+
+  Note this installs by the **legacy** `/usr/share` + `templates.json` route,
+  which a firmware update wipes (`-Relink` restores it). Newer firmware has a
+  supported custom-template system — templates from methods.remarkable.com use
+  it, they are library entries under `/home`, and they do survive updates. See
+  [references/templates.md](references/templates.md) before running the
+  installer.
 
 The generator **refuses to overflow**: a spec that needs more room than the page
 body fails with the overage in points rather than quietly drawing past the bottom,
