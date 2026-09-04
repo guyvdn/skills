@@ -14,7 +14,7 @@ npx skills add guyvdn/skills
 
 | Skill | Description |
 |---|---|
-| [windows-perf](skills/windows-perf/) | Diagnose CPU load honestly (kernel vs user vs DPC, simultaneous sampling), work out why a laptop fan never stops, and disable telemetry services and unnecessary startup items on Windows |
+| [windows-perf](skills/windows-perf/) | Diagnose CPU load honestly (kernel vs user vs DPC, simultaneous sampling), work out why a laptop fan never stops (sustained background load vs sustained turbo on light load, and how to actually disable turbo on Speed Shift hardware), and disable telemetry services and unnecessary startup items on Windows |
 | [windows-defender-dev](skills/windows-defender-dev/) | Configure Windows Defender path and process exclusions for a Windows developer machine — covers Visual Studio 2022 (v17) and 2026 (v18), VS Code, JetBrains Rider, .NET SDK, NuGet, MSBuild, SSMS, and user-supplied project folders. Idempotent, safe to re-run. |
 | [windows-dev-drive](skills/windows-dev-drive/) | Set up, audit and tune a Windows Dev Drive — ReFS/VHDX creation, trust, Microsoft Defender performance mode, filter allow lists, and redirecting NuGet/npm/pip/cargo/Gradle/Maven package caches onto it. |
 | [windows-display-dimming](skills/windows-display-dimming/) | Diagnose and stop a laptop screen dimming by itself — ambient-light adaptive brightness, content-adaptive dimming (Intel DPST / AMD Vari-Bright / CABC), battery-saver dimming, plus a boot task so the fix survives Windows feature updates. |
