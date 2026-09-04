@@ -72,6 +72,7 @@ Page-level keys: `pages`, `line_gap`, `margin_x`, `margin_top`, `margin_bottom`,
 | `row` | Side-by-side columns, each holding its own blocks |
 | `rule` | A single horizontal divider |
 | `spacer` | Vertical space (`size`) |
+| `cover` | A framed poster page — title banner, icon collage, footer rule. See [covers.md](covers.md) |
 
 `section` styles: `lines` (writing rules), `checks` (checkbox + rule),
 `dots` (dot grid, `step`), `grid` (squared, `step`), `box` (a bordered area),

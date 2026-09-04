@@ -228,6 +228,39 @@ To prove a template actually loaded, export it straight back: if
 `/download/<guid>/pdf` returns the right page count and geometry, the device
 parsed and rendered it.
 
+## Making a cover page
+
+The first page of a notebook is what the library shows as its thumbnail, so a bold
+drawing there is how you find the right notebook without opening three. Same
+generator, a `cover` block:
+
+```bash
+python skills/remarkable/scripts/make_template.py \
+    skills/remarkable/templates/cover.json -o dev-leads.pdf \
+    --title "Dev leads" \
+    --icons person,code-window,lightbulb,bar-chart,arrow-up,gear,laptop \
+    --template "Dev leads.template" --preview cover.png
+```
+
+Framed page, grey title banner, an icon collage — **first icon is the hero**, in the
+centre, the rest around it — and a footer rule to date it. `cover.json` is the only
+spec you need; override `--title` and `--icons` rather than copying it per notebook.
+
+`--list-icons` names the 31 icons; `--icon-sheet sheet.pdf` draws them all captioned
+on one page, which is both the picker and the regression test after editing
+`rm_icons.py`.
+
+Install it as a template (`Add-RemarkableCustomTemplate.ps1`), then apply it to page 1
+in the picker. **The PDF output is for previewing only** — an imported PDF is its own
+document and cannot be merged into an existing notebook, so the template is the only
+route that actually gets a cover onto a notebook's first page.
+
+The title is drawn as **filled glyph outlines, not a `text` item**, so it is the same
+Helvetica-Bold in the PDF and on the device, and a cover cannot hit the
+non-integer-`fontSize` failure that renders a template blank. See
+[references/covers.md](references/covers.md) for the drawing conventions before
+adding an icon — the angle convention and `rrect_pts` ordering both bite.
+
 ## Notes and limits
 
 - The tablet's own **Convert to text** (select strokes → Convert) is excellent but is
@@ -236,5 +269,8 @@ parsed and rendered it.
 - `VissibleName` is the tablet's own spelling of the title field. Not a typo to fix.
 - The USB web interface is unauthenticated on a link-local network; anything on
   that subnet can read every notebook while it is enabled.
-- **`Add-RemarkableFile.ps1` is the only script that writes to the tablet.**
-  Everything else is read-only. There is no delete — remove files on the device.
+- **Three scripts write to the tablet** — `Add-RemarkableFile.ps1` (uploads a
+  document), `Add-RemarkableCustomTemplate.ps1` and `Install-RemarkableTemplate.ps1`
+  (install a template over SSH). Everything else is read-only. **Confirm with the
+  user before running any of the three.** There is no delete endpoint on the web
+  interface — documents have to be removed on the device by hand.

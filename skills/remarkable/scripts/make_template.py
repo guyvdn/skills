@@ -19,8 +19,14 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import math
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import rm_glyphs                                    # noqa: E402
+import rm_icons                                     # noqa: E402
+from rm_icons import rrect_pts                      # noqa: E402
 
 try:
     import pymupdf
@@ -49,6 +55,8 @@ INK_HEAD = (0.28, 0.28, 0.28)   # section headings
 INK_RULE = (0.68, 0.68, 0.68)   # writing lines
 INK_EDGE = (0.52, 0.52, 0.52)   # box borders, field underlines
 INK_DOT = (0.76, 0.76, 0.76)
+INK_LINE = rm_icons.INK_LINE    # cover artwork outlines — near black, heavy
+INK_BAND = (0.80, 0.80, 0.80)   # the title banner and the icon fills
 
 # Drop below a section heading before the first writing slot begins. Tuned so
 # that first slot is the same height as every slot after it — you write *above*
@@ -118,6 +126,16 @@ class Canvas:
     def rect(self, x0, y0, x1, y1, ink=INK_EDGE, width=0.7): ...
     def text(self, x, y, s, size, bold=False, ink=INK_HEAD): ...
 
+    def shape(self, subpaths, ink=None, width=0.6, fill=None, close=True):
+        """One filled/stroked shape made of several point lists.
+
+        Several subpaths in *one* shape, rather than one shape each, because
+        that is what makes a hole a hole: a glyph counter and an icon cut-out
+        are wound the opposite way to their outline, and only an even-odd fill
+        over the whole set leaves them empty. Drawn separately they fill solid.
+        """
+        raise NotImplementedError
+
     def rows(self, x, y_first, w, gap, n, checks=False):
         """n evenly spaced writing rows, optionally each with a checkbox."""
         raise NotImplementedError
@@ -161,6 +179,23 @@ class PdfCanvas(Canvas):
             else:
                 self.rule(x, ly, x + w)
 
+    def shape(self, subpaths, ink=None, width=0.6, fill=None, close=True):
+        sh = self.p.new_shape()
+        drew = False
+        for pts in subpaths:
+            if len(pts) < 2:
+                continue
+            pts = list(pts) + ([pts[0]] if close and pts[0] != pts[-1] else [])
+            sh.draw_polyline([pymupdf.Point(*p) for p in pts])
+            drew = True
+        if not drew:
+            return
+        # closePath=False: every subpath already carries its own closing point,
+        # whereas Shape.finish would only close the last one.
+        sh.finish(color=ink, fill=fill, width=max(width, 0.1) if ink else 0,
+                  closePath=False, even_odd=True, lineCap=1, lineJoin=1)
+        sh.commit()
+
     def dots(self, x, y, w, h, step):
         yy = y + step / 2
         while yy < y + h - 2:
@@ -191,6 +226,23 @@ def icon_svg(spec, cfg, margin_left, margin_right):
 
     parts = [f'<rect x="2" y="2" width="{W-4:g}" height="{H-4:g}" '
              f'fill="none" stroke="black" stroke-width="4"/>']
+
+    if any(b.get("type") == "cover" for b in blocks):
+        # A cover's schematic is the poster itself: banner, hero, footer rule.
+        n = len(next(b for b in blocks if b.get("type") == "cover").get("icons") or [])
+        parts.append('<rect x="10" y="10" width="130" height="34" fill="black"/>')
+        parts.append('<circle cx="75" cy="112" r="26" fill="none" '
+                     'stroke="black" stroke-width="5"/>')
+        for i, (cx, cy) in enumerate(((30, 72), (120, 72), (30, 152), (120, 152),
+                                      (75, 62), (30, 112), (120, 112), (75, 162))):
+            if i >= max(n - 1, 0):
+                break
+            parts.append(f'<circle cx="{cx}" cy="{cy}" r="12" fill="none" '
+                         f'stroke="black" stroke-width="4"/>')
+        parts.append('<line x1="10" y1="176" x2="140" y2="176" '
+                     'stroke="black" stroke-width="4"/>')
+        return ('<svg width="150" height="200" viewBox="0 0 150 200" fill="none" '
+                'xmlns="http://www.w3.org/2000/svg">' + "".join(parts) + "</svg>")
 
     y = cfg["margin_top"]
     for b in blocks:
@@ -266,6 +318,30 @@ class TemplateCanvas(Canvas):
             "fontSize": max(1, int(round(size * UNITS_PER_PT))),
             "position": {"x": self.u(x), "y": self.u(y)},
         })
+
+    def shape(self, subpaths, ink=None, width=0.6, fill=None, close=True):
+        data = []
+        for pts in subpaths:
+            if len(pts) < 2:
+                continue
+            data += ["M", self.u(pts[0][0]), self.u(pts[0][1])]
+            for px, py in pts[1:]:
+                data += ["L", self.u(px), self.u(py)]
+            if close:
+                data.append("Z")
+        if not data:
+            return
+        item = {"type": "path", "data": data}
+        # A fill with no stroke leaves the shape a hairline short of its
+        # outline, so an unstroked fill borrows its own colour for the edge.
+        stroke = ink if ink is not None else fill
+        if stroke is not None:
+            item["strokeColor"] = _hex(stroke)
+            item["strokeWidth"] = max(1, int(round(
+                (width if ink is not None else 0.3) * UNITS_PER_PT)))
+        if fill is not None:
+            item["fillColor"] = _hex(fill)
+        self.items.append(item)
 
     def rows(self, x, y_first, w, gap, n, checks=False):
         """One repeat-group instead of n separate paths — idiomatic, and small."""
@@ -408,10 +484,120 @@ def render_rule(cv, spec, x, y, w, h, cfg):
     cv.rule(x, y + h / 2, x + w, ink=INK_EDGE, width=0.7)
 
 
+# Where satellite icons go, in order: corners first, then the sides, then the
+# remaining diagonals. Angles are counter-clockwise from 3 o'clock, so a
+# positive one is above the centre. Filling corners first keeps a three- or
+# four-icon cover from looking like a row of buttons.
+SAT_SLOTS = (135, 45, 180, 0, -135, -45, 90, -90)
+
+
+def render_cover(cv, spec, x, y, w, h, cfg):
+    """A poster page: framed, a title banner, an icon collage, a footer line.
+
+    This is the first page of a notebook, and its only job is to be
+    recognisable as a thumbnail in the library at about 20 mm wide. That is
+    why the title is heavy and short and the artwork is a handful of large
+    shapes rather than a detailed drawing — anything finer turns to mush.
+    """
+    heading = str(spec.get("heading", spec.get("title", ""))).strip()
+    if spec.get("uppercase", True):
+        heading = heading.upper()
+    icons = spec.get("icons") or []
+    pad = float(spec.get("pad", 16.0))
+    r = float(spec.get("radius", 20.0))
+    stroke = float(spec.get("stroke", 2.2))
+
+    band_h = float(spec.get("banner_height", 0.0)) or max(h * 0.155, 52.0)
+    foot_h = float(spec.get("footer_height", 0.0)) or max(h * 0.115, 44.0)
+    band_y = y + band_h
+    foot_y = y + h - foot_h
+
+    # --- frame and banner ---
+    cv.shape([rrect_pts(x, y, x + w, y + h, r)], ink=INK_LINE, width=stroke)
+    # The banner is the frame's top corners plus a straight cut across, so it
+    # sits flush inside the rounded corner instead of poking out of it.
+    top = rrect_pts(x, y, x + w, y + h, r)
+    top = [p for p in top if p[1] < y + r + 0.01 or abs(p[0] - x) < 0.01
+           or abs(p[0] - (x + w)) < 0.01]
+    top = [p for p in top if p[1] <= band_y]
+    cv.shape([top + [(x + w, band_y), (x, band_y)]], fill=INK_BAND)
+    cv.line(x, band_y, x + w, band_y, INK_LINE, stroke)
+
+    # --- title, drawn as outlines rather than as a font ---
+    if heading:
+        tracking = float(spec.get("tracking", 0.02))
+        avail = w - 2 * pad
+        size = float(spec.get("title_size", 0.0)) or band_h * 0.60
+        while size > 6 and rm_glyphs.advance(heading, size, tracking=tracking) > avail:
+            size -= 0.5
+        tw = rm_glyphs.advance(heading, size, tracking=tracking)
+        # Cap height for Helvetica is 0.717 em; centring on that rather than on
+        # the em box is what stops an all-caps title from sitting visibly low.
+        base = y + band_h / 2 + size * 0.717 / 2
+        cv.shape(rm_glyphs.outlines(heading, size, x + (w - tw) / 2, base,
+                                    tracking=tracking), fill=INK_LINE)
+
+    # --- footer: a rule to write a date or a period on ---
+    cv.line(x, foot_y, x + w, foot_y, INK_LINE, stroke)
+    sub = str(spec.get("subtitle", "")).strip()
+    if sub:
+        ssize = float(spec.get("subtitle_size", 0.0)) or min(foot_h * 0.34, 15.0)
+        sw = rm_glyphs.advance(sub, ssize, tracking=0.02)
+        cv.shape(rm_glyphs.outlines(sub, ssize, x + (w - sw) / 2,
+                                    foot_y + foot_h / 2 + ssize * 0.36,
+                                    tracking=0.02), fill=INK_LINE)
+    elif spec.get("footer", True):
+        cv.line(x + pad * 1.6, foot_y + foot_h * 0.62,
+                x + w - pad * 1.6, foot_y + foot_h * 0.62, INK_LINE, 1.4)
+
+    # --- the collage ---
+    if not icons:
+        return
+    ax0, ay0 = x + pad, band_y + pad
+    ax1, ay1 = x + w - pad, foot_y - pad
+    aw, ah = ax1 - ax0, ay1 - ay0
+    if aw <= 0 or ah <= 0:
+        return
+    cxc, cyc = ax0 + aw / 2, ay0 + ah / 2
+    scale = float(spec.get("icon_scale", 1.0))
+    weight = float(spec.get("icon_weight", 0.030))
+
+    unknown = [n for n in icons if n not in rm_icons.REGISTRY]
+    if unknown:
+        sys.exit(f"Unknown icon(s): {', '.join(unknown)}.\n"
+                 f"Available: {', '.join(rm_icons.names())}")
+
+    if len(icons) == 1:
+        s = min(aw, ah) * 0.88 * scale
+        rm_icons.draw(cv, icons[0], cxc - s / 2, cyc - s / 2, s, weight)
+        return
+
+    hero = min(aw, ah) * 0.55 * scale
+    sat = min(aw, ah) * 0.30 * scale
+    rm_icons.draw(cv, icons[0], cxc - hero / 2, cyc - hero / 2, hero, weight)
+
+    rx, ry = (aw - sat) / 2, (ah - sat) / 2
+    for i, name in enumerate(icons[1:len(SAT_SLOTS) + 1]):
+        a = math.radians(SAT_SLOTS[i])
+        # Normalised on the larger component, not the vector length, so a
+        # diagonal slot lands in the actual corner. Scale it down by the
+        # circle and the four corners sit half an icon in from the frame,
+        # which is the crowded look the first draft had.
+        c, s = math.cos(a), math.sin(a)
+        m = max(abs(c), abs(s))
+        cx, cy = cxc + rx * c / m, cyc - ry * s / m
+        rm_icons.draw(cv, name, cx - sat / 2, cy - sat / 2, sat, weight)
+
+    if len(icons) > len(SAT_SLOTS) + 1:
+        print(f"note: cover shows {len(SAT_SLOTS) + 1} of {len(icons)} icons; "
+              f"the rest were dropped.", file=sys.stderr)
+
+
 RENDERERS = {
     "header": render_header,
     "section": render_section,
     "rule": render_rule,
+    "cover": render_cover,
     "spacer": lambda *a, **k: None,
 }
 
@@ -426,6 +612,10 @@ def natural_height(spec, cfg):
         return 10.0
     if t == "spacer":
         return float(spec.get("size", 12.0))
+    if t == "cover":
+        # A cover wants the whole page; this is only the fallback for a spec
+        # that forgot "fill": true, and the overflow guard uses it as-is.
+        return 420.0
     if t == "row":
         return max(column_height(c, cfg) for c in spec["columns"])
     return _lines_height(spec, cfg)
@@ -472,6 +662,12 @@ def build(spec, out_path, pages=None, preview=None,
             cfg[k] = float(spec[k])
 
     margin_left, margin_right = resolve_margins(cfg, spec)
+
+    # A cover's headline is the document title unless it says otherwise, so
+    # `--title "Dev leads"` names the template and letters the front in one go.
+    for b in spec.get("blocks", []):
+        if b.get("type") == "cover" and "heading" not in b:
+            b["heading"] = spec.get("title", "")
 
     n_pages = int(pages or spec.get("pages", 1))
     doc = pymupdf.open()
@@ -553,11 +749,45 @@ def build(spec, out_path, pages=None, preview=None,
     return n_pages
 
 
+def icon_sheet(out_path, cols=6, cell=76.0, pad=20.0, label=13.0):
+    """Every icon on one page, captioned. Both a picker and a regression test —
+    a broken arc is obvious here and invisible in a spec file."""
+    names = rm_icons.names()
+    rows = -(-len(names) // cols)
+    doc = pymupdf.open()
+    page = doc.new_page(width=cols * cell + 2 * pad,
+                        height=rows * (cell + label) + 2 * pad)
+    cv = PdfCanvas(page, dict(DEFAULTS))
+    for i, name in enumerate(names):
+        cx = pad + (i % cols) * cell
+        cy = pad + (i // cols) * (cell + label)
+        rm_icons.draw(cv, name, cx + cell * 0.11, cy, cell * 0.78)
+        tw = pymupdf.get_text_length(name, "Helvetica", 6.5)
+        cv.text(cx + (cell - tw) / 2, cy + cell + 8, name, 6.5, ink=INK_HEAD)
+    if str(out_path).lower().endswith(".png"):
+        page.get_pixmap(matrix=pymupdf.Matrix(2, 2)).save(out_path)
+    else:
+        doc.save(out_path)
+    doc.close()
+    return len(names)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("spec", type=Path, help="template JSON")
-    ap.add_argument("-o", "--out", type=Path, required=True)
+    ap.add_argument("spec", type=Path, nargs="?", help="template JSON")
+    ap.add_argument("-o", "--out", type=Path)
+    ap.add_argument("--title", help="override the spec's title — for a cover, "
+                                    "this is the name on the front and the "
+                                    "name the template installs under")
+    ap.add_argument("--icons", help="comma-separated icon names for a cover "
+                                    "block; the first one is the large one")
+    ap.add_argument("--subtitle", help="a line under the footer rule, instead "
+                                       "of leaving it blank to write on")
+    ap.add_argument("--list-icons", action="store_true",
+                    help="print the available cover icons and exit")
+    ap.add_argument("--icon-sheet", type=Path, metavar="OUT.pdf",
+                    help="draw every cover icon on one captioned page and exit")
     ap.add_argument("--pages", type=int, help="override the spec's page count")
     ap.add_argument("--preview", type=Path, help="also write a 2x PNG of page 1, to look at")
     ap.add_argument("--png", type=Path,
@@ -571,7 +801,30 @@ def main() -> int:
                          "for a real installed template with unlimited pages")
     args = ap.parse_args()
 
+    if args.list_icons:
+        print("\n".join(rm_icons.names()))
+        return 0
+    if args.icon_sheet:
+        args.icon_sheet.parent.mkdir(parents=True, exist_ok=True)
+        n = icon_sheet(args.icon_sheet)
+        print(f"{args.icon_sheet}  {n} icons", file=sys.stderr)
+        return 0
+    if not args.spec or not args.out:
+        ap.error("spec and --out are required (except with --list-icons)")
+
     spec = json.loads(args.spec.read_text(encoding="utf-8"))
+    if args.title:
+        spec["title"] = args.title
+    covers = [b for b in spec.get("blocks", []) if b.get("type") == "cover"]
+    if args.icons or args.subtitle:
+        if not covers:
+            ap.error("--icons/--subtitle only apply to a spec with a cover block")
+        for b in covers:
+            if args.icons:
+                b["icons"] = [s.strip() for s in args.icons.split(",") if s.strip()]
+            if args.subtitle:
+                b["subtitle"] = args.subtitle
+
     args.out.parent.mkdir(parents=True, exist_ok=True)
     for p in (args.preview, args.png, args.svg, args.template):
         if p:

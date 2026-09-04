@@ -12,3 +12,7 @@ Thumbs.db
 # nest the repo in itself.
 .claude/worktrees/
 .claude/settings.local.json
+
+# Python bytecode from the skill scripts.
+__pycache__/
+*.py[cod]
