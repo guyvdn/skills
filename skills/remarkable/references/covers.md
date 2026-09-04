@@ -28,8 +28,8 @@ notebook — override `--title` and `--emoji`.
 └──────────────────────────┘   no frame, no band, no rule, no date line
 ```
 
-Two marks, pure black on white, clear space between them. Everything else was tried
-and removed, each for a measured reason at 118 px:
+Two marks with clear space between them: a black title and a greyscale emoji on white.
+Everything else was tried and removed, each for a measured reason at 118 px:
 
 | Cut | Why |
 |---|---|
@@ -103,7 +103,7 @@ taller-than-wide glyph still lands centred.
 | Baseline | `cap_top + 0.717 * size` — Helvetica's cap height, not the em box |
 | Emoji box | 0.70 x page width, centred in the space below the title |
 | Gap under the title | 40 pt |
-| Tone | black only |
+| Tone | black title; emoji greys in [0.16, 0.82] with a dark contour |
 
 **Margins are 44 pt, not 26.** 26 gives a bigger title (65 pt versus 59 pt, a cap
 height of 12.4 px versus 11.2 at thumbnail size) but the pinned toolbar floats over
