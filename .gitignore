@@ -16,3 +16,6 @@ Thumbs.db
 # Python bytecode from the skill scripts.
 __pycache__/
 *.py[cod]
+
+# Generated templates, covers and previews. Regenerate with make_template.py.
+out/

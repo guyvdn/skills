@@ -120,7 +120,7 @@ this guard during development.
 ## Checking one before you commit to it
 
 ```bash
-python make_template.py templates/standup.json -o standup.pdf --pages 1 --preview standup.png
+python make_template.py templates/standup.json -o out/standup.pdf --pages 1 --preview out/standup.png
 ```
 
 Then look at the PNG. Worth checking: nothing is clipped at the bottom, the
@@ -233,11 +233,11 @@ it, so backups must not live there — the installer keeps them in
 #### Generate and install
 
 ```bash
-python make_template.py templates/standup.json -o standup.pdf --template Standup.template
+python make_template.py templates/standup.json -o out/standup.pdf --template out/Standup.template
 ```
 
 ```powershell
-.\Install-RemarkableTemplate.ps1 -Template .\Standup.template -Password '<from the device>'
+.\Install-RemarkableTemplate.ps1 -Template .\out\Standup.template -Password '<from the device>'
 ```
 
 `--png` and `--svg` still exist for older firmware that wants an image; on 3.20+
@@ -286,7 +286,7 @@ ssh root@10.11.99.1 'grep -l TemplateType /home/root/.local/share/remarkable/xoc
 ```
 
 ```powershell
-.\Add-RemarkableCustomTemplate.ps1 -Template .\Standup.template -Password '<from the device>'
+.\Add-RemarkableCustomTemplate.ps1 -Template .\out\Standup.template -Password '<from the device>'
 .\Add-RemarkableCustomTemplate.ps1 -List -Password '<...>'
 .\Add-RemarkableCustomTemplate.ps1 -Name Standup -Uninstall -Password '<...>'
 ```

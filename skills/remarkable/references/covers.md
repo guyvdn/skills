@@ -7,9 +7,9 @@ follows from one number: the thumbnail is about **20 mm wide**, which is **118 p
 
 ```bash
 python skills/remarkable/scripts/make_template.py \
-    skills/remarkable/templates/cover.json -o dev-leads.pdf \
+    skills/remarkable/templates/cover.json -o out/dev-leads.pdf \
     --title "Dev leads" --emoji "👥" \
-    --template "Dev leads.template" --preview cover.png
+    --template "out/Dev leads.template" --preview out/cover.png
 ```
 
 One spec file for every cover you will ever make. Do not copy `cover.json` per
@@ -132,7 +132,7 @@ outlines**. This looks like the heavier route and is the safer one:
 - `fontSize` already cost this skill an afternoon: a non-integer makes the device
   reject the entire file and render the template **blank**, with nothing in the UI to
   say so. A cover has **zero text items**, so it cannot hit that at all. Check with
-  `grep '"type": "text"' Cover.template` and expect nothing back.
+  `grep '"type": "text"' out/*.template` and expect nothing back.
 
 Counters — the hole in a D — are separate subpaths wound the other way, so the whole
 set is filled as **one shape with an even-odd rule**. Filled one at a time they come
@@ -144,7 +144,7 @@ A cover is a **template**, installed the normal supported way:
 
 ```powershell
 powershell -File skills/remarkable/scripts/Add-RemarkableCustomTemplate.ps1 `
-    -Template '.\Dev leads.template' -Password '<from the device>'
+    -Template '.\out\Dev leads.template' -Password '<from the device>'
 ```
 
 Then on the tablet: open the notebook, **page 1**, template picker, pick it. Do not
@@ -160,7 +160,7 @@ the design, not for shipping it.
 ## The drawn-icon route, kept but not preferred
 
 `--icons` uses a small hand-drawn library (`rm_icons.py`, `--list-icons`,
-`--icon-sheet sheet.pdf`) instead of an emoji. It predates the emoji route. **Use
+`--icon-sheet out/sheet.pdf`) instead of an emoji. It predates the emoji route. **Use
 `--emoji`** — thousands of shapes, no maintenance, drawn by people who can draw.
 
 If you do edit `rm_icons.py`, regenerate the contact sheet and look at it. Four icons

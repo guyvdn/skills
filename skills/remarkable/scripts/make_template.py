@@ -8,10 +8,10 @@ the screen with no letterboxing on both reMarkable 2 and Paper Pro.
 Everything is vector, so it stays sharp at any zoom, and it uses only the PDF
 base-14 fonts, so nothing has to be embedded and nothing can fail to load.
 
-Usage:
-    python make_template.py templates/standup.json -o standup.pdf
-    python make_template.py templates/standup.json -o standup.pdf --pages 60
-    python make_template.py templates/standup.json -o out.pdf --preview out.png
+Usage — write into out/, which the repo ignores:
+    python make_template.py templates/standup.json -o out/standup.pdf
+    python make_template.py templates/standup.json -o out/standup.pdf --pages 60
+    python make_template.py templates/cover.json -o out/cover.pdf         --title "Dev leads" --emoji "👥"         --template "out/Dev leads.template" --preview out/cover.png
 """
 
 from __future__ import annotations

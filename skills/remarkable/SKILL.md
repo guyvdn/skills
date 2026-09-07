@@ -171,7 +171,7 @@ sized to the device so it fills the screen instead of sitting in grey bands.
 
 ```bash
 python skills/remarkable/scripts/make_template.py \
-    skills/remarkable/templates/standup.json -o standup.pdf --pages 40 --preview p1.png
+    skills/remarkable/templates/standup.json -o out/standup.pdf --pages 40 --preview out/p1.png
 ```
 
 Ships with `standup.json`, `meeting.json`, `weekly.json`. Write a new one by
@@ -236,9 +236,9 @@ generator, a `cover` block:
 
 ```bash
 python skills/remarkable/scripts/make_template.py \
-    skills/remarkable/templates/cover.json -o dev-leads.pdf \
+    skills/remarkable/templates/cover.json -o out/dev-leads.pdf \
     --title "Dev leads" --emoji "👥" \
-    --template "Dev leads.template" --preview cover.png
+    --template "out/Dev leads.template" --preview out/cover.png
 ```
 
 A caps title at the top and **one** emoji filling the middle. Nothing else — no frame,
@@ -266,7 +266,7 @@ glyph and comes back empty, with a note on stderr. `--icons` is an older hand-dr
 the design either works or does not:
 
 ```python
-pymupdf.open("dev-leads.pdf")[0].get_pixmap(matrix=pymupdf.Matrix(118/445, 118/445)).save("thumb.png")
+pymupdf.open("out/dev-leads.pdf")[0].get_pixmap(matrix=pymupdf.Matrix(118/445, 118/445)).save("thumb.png")
 ```
 
 Install it as a template (`Add-RemarkableCustomTemplate.ps1`), then apply it to page 1
