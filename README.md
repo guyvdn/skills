@@ -18,6 +18,7 @@ npx skills add guyvdn/skills
 | [windows-defender-dev](skills/windows-defender-dev/) | Configure Windows Defender path and process exclusions for a Windows developer machine — covers Visual Studio 2022 (v17) and 2026 (v18), VS Code, JetBrains Rider, .NET SDK, NuGet, MSBuild, SSMS, and user-supplied project folders. Idempotent, safe to re-run. |
 | [windows-dev-drive](skills/windows-dev-drive/) | Set up, audit and tune a Windows Dev Drive — ReFS/VHDX creation, trust, Microsoft Defender performance mode, filter allow lists, and redirecting NuGet/npm/pip/cargo/Gradle/Maven package caches onto it. |
 | [windows-display-dimming](skills/windows-display-dimming/) | Diagnose and stop a laptop screen dimming by itself — ambient-light adaptive brightness, content-adaptive dimming (Intel DPST / AMD Vari-Bright / CABC), battery-saver dimming, plus a boot task so the fix survives Windows feature updates. |
+| [windows-printer-duplicates](skills/windows-printer-duplicates/) | Sort out a printer that appears twice in Windows — rescue the jobs stranded on the dead WSD queue by repointing its port instead of editing spool files, work out which of the two queues to keep, remove the duplicate and its orphaned port, and stop the default printer drifting back. |
 | [agent-browser-cleanup](skills/agent-browser-cleanup/) | Get `agent-browser` launching again when every command dies with "Chrome exited early (exit code: 0)", and remove the Chrome trees it leaks (hundreds of processes, gigabytes of RAM) — covers the elevated-shell cause that reinstalls and Defender exclusions cannot fix, why `close --all` misses the leak, and why "parent is dead" is the wrong orphan test. |
 | [reveal-md](skills/reveal-md/) | Create, run, and export reveal-md presentations. Use when the user wants to create a new slide deck, serve a presentation locally, or export one to PDF. |
 | [interactive-reveal-deck](skills/interactive-reveal-deck/) | Build a presentation as a reveal.js deck with a designed interface and interactive demo panels instead of static bullets — per-part accent colours, a chapter rail, a jump-to-slide palette, an annotation layer, and widgets the presenter drives from the clicker. Ships the theme, the code-window tokenizer (C#, JSON, TS), six widget patterns, a scaffold script and a layout verifier. |
@@ -36,6 +37,11 @@ After installing, ask your AI agent:
 - *"Set up a Dev Drive and move my NuGet cache onto it"*
 - *"My screen keeps dimming on its own, can you turn that off?"*
 - *"Disable dynamic/adaptive brightness on my laptop"*
+- *"My printer got added twice and the jobs are stuck on the offline one"*
+- *"Can you move these documents to the working print queue?"*
+- *"Which of these two printer entries should I delete?"*
+- *"Why can't I see which printer is the default any more?"*
+- *"My default printer keeps changing by itself"*
 - *"Something left hundreds of chrome.exe processes running"*
 - *"agent-browser said it closed everything but the browsers are still there"*
 - *"agent-browser can't launch Chrome — it says Chrome exited early without writing DevToolsActivePort"*
@@ -95,6 +101,12 @@ powershell -ExecutionPolicy Bypass -File skills/windows-defender-dev/scripts/Set
 # Multi-value parameters need -Command, not -File: with -File a quoted comma list
 # binds as ONE string (quotes included).
 powershell -ExecutionPolicy Bypass -Command "& './skills/windows-defender-dev/scripts/Set-DefenderExclusions.ps1' -ProjectFolders 'D:\projects','D:\source'"
+
+# Print queue audit - duplicates, stranded jobs, orphaned ports (read-only, no admin needed)
+powershell -ExecutionPolicy Bypass -File skills/windows-printer-duplicates/scripts/Test-PrinterQueues.ps1
+
+# ...as JSON, for a script or an agent to consume
+powershell -ExecutionPolicy Bypass -File skills/windows-printer-duplicates/scripts/Test-PrinterQueues.ps1 -Json
 
 # Display auto-dimming audit (read-only)
 powershell -ExecutionPolicy Bypass -File skills/windows-display-dimming/scripts/Test-DisplayDimming.ps1
