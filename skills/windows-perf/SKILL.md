@@ -1,7 +1,7 @@
 ---
 name: windows-perf
 description: 'Use this skill only when the user explicitly asks to diagnose CPU spikes, fix Windows performance issues, disable telemetry services, clean up startup items, or work out why a laptop fan never stops on Windows.'
-version: 1.2.0
+version: 1.3.0
 ---
 
 # Windows Performance Tuning
@@ -163,7 +163,7 @@ which one you have before changing anything.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Modest utilization, frequency at or below base | **Sustained background load** — a dozen idle-but-not-quiet services totalling 10–15% keeps a 28W mobile part warm, and no single row in Task Manager looks worth killing. | Reduce background load (Steps 3–6). |
+| Modest utilization, frequency at or below base | **Sustained background load** — a dozen idle-but-not-quiet services totalling 10–15% keeps a 28W mobile part warm, and no single row in Task Manager looks worth killing. | Check for an idle container VM first (below), then reduce background load (Steps 3–6). |
 | Modest utilization, frequency **above** base | **Sustained turbo on light load** — light, scattered work across many cores holds the package at high clocks. Power scales with V²·f, so heat comes from frequency, not from utilization. | Disable turbo (below). |
 
 The second case is easy to misdiagnose as the first, because both show a low
@@ -204,6 +204,68 @@ package-wide rather than one busy core:
   Where-Object InstanceName -notmatch '_total' |
   Select-Object InstanceName, @{n='PctOfBase';e={[math]::Round($_.CookedValue)}} | Sort-Object InstanceName
 ```
+
+### An idle container VM is the most common sustained-load culprit
+
+When the machine is in the **sustained background load** row above, check WSL2 before
+anything else. `vmmemWSL` (or `vmmem`) is the Windows-side accounting for the whole
+WSL2 VM, so a busy distro shows up as one anonymous row that names nothing.
+
+A Kubernetes distro is the usual offender. Rancher Desktop and Docker Desktop both ship
+a single-node cluster that is **on by default**, and an idle control plane is not free:
+k3s server, traefik, coredns, metrics-server and local-path-provisioner together hold
+roughly **half a core continuously**, mostly as kernel-side time from constant polling
+(`metrics-server` defaults to `--metric-resolution=15s`). Measured on a 16-core laptop,
+that was 3-9% of the box and about 25 points of `% Privileged Time`.
+
+Two things make it easy to miss:
+
+- It survives reboots silently. The cluster restarts with the machine, so the cost has
+  usually been there for months. Pod `AGE` and `RESTARTS` tell you how long — an age in
+  the hundreds of days with a restart count to match means every boot since install.
+- **The cluster is often completely empty.** Check before assuming it is in use:
+
+```powershell
+wsl -d rancher-desktop -e sh -c "k3s kubectl get all --all-namespaces"
+```
+
+If everything returned is in `kube-system` and the `default` namespace holds only the
+built-in `kubernetes` service, nothing has ever been deployed and the whole control
+plane is pure overhead.
+
+Confirm the VM is the load, and that the distro itself is busy rather than idle:
+
+```powershell
+$c = (Get-CimInstance Win32_ComputerSystem).NumberOfLogicalProcessors
+(Get-Counter '\Process(vmmemWSL)\% Processor Time' -SampleInterval 4 -MaxSamples 3).CounterSamples |
+  ForEach-Object { [math]::Round($_.CookedValue / $c, 1).ToString() + '% of box' }
+wsl -l --running
+wsl -d rancher-desktop -e sh -c "uptime"   # load average, not %CPU - `top` reports ~97% idle while load sits at 0.5
+```
+
+Turn Kubernetes off without losing Docker — this keeps `dockerd` and the Docker socket,
+and stops the cluster returning at boot:
+
+```powershell
+rdctl set --kubernetes.enabled=false
+```
+
+`dockerd` drops out during the reconfigure and returns within about 15 seconds; wait for
+it rather than assuming the change broke Docker. For Docker Desktop the equivalent is
+Settings > Kubernetes > uncheck **Enable Kubernetes**.
+
+Measured effect on a 16-core laptop with an empty 223-day-old k3s cluster:
+
+| | before | after |
+|---|---|---|
+| `vmmemWSL` | 3-9% of box | 0% |
+| `% Privileged Time` | 33-37% | 6-10% |
+| `% Processor Performance` | 87-97% of base | 76-82% of base |
+| CPU thermal zone | 61.9 C | 55.9 C |
+
+**Give it ten minutes before judging.** ACPI thermal zones are slow, and the distro's
+load average takes minutes to decay, so an immediate re-measure shows the CPU drop with
+barely any temperature movement and reads as a failure.
 
 ### Disabling turbo when light load holds high clocks
 
