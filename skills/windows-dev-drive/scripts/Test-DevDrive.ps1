@@ -183,7 +183,9 @@ Write-Host "`n-- Package caches" -ForegroundColor Cyan
 $caches = [ordered]@{
     'NUGET_PACKAGES'             = 'NuGet global-packages (dotnet / MSBuild / VS)'
     'npm_config_cache'           = 'npm'
+    'pnpm_config_store_dir'      = 'pnpm store (pnpm 11 reads pnpm_config_*, not npm_config_*)'
     'PIP_CACHE_DIR'              = 'pip'
+    'UV_CACHE_DIR'               = 'uv'
     'CARGO_HOME'                 = 'Cargo (Rust)'
     'VCPKG_DEFAULT_BINARY_CACHE' = 'vcpkg binary cache'
     'GRADLE_USER_HOME'           = 'Gradle'

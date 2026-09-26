@@ -10,7 +10,10 @@
     requires an elevated session.
 
     Existing content is moved with robocopy /MOVE only when -Move is passed. Close
-    Visual Studio, IDEs and build agents first.
+    Visual Studio, IDEs and build agents first. If a running process still references an
+    old cache path (e.g. an MCP server launched through npx runs out of npm-cache\_npx),
+    that cache is copied instead of moved, and the old folder is left for you to delete
+    after the process exits.
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File scripts/Set-DevDriveCaches.ps1 -DriveLetter D -WhatIf
 .EXAMPLE
@@ -31,8 +34,8 @@ param(
     [string]$Root,
 
     # Which caches to redirect. Default: all of them.
-    [ValidateSet('NuGet', 'Npm', 'Pip', 'Cargo', 'Vcpkg', 'Gradle', 'Maven')]
-    [string[]]$Caches = @('NuGet', 'Npm', 'Pip', 'Cargo', 'Vcpkg', 'Gradle', 'Maven'),
+    [ValidateSet('NuGet', 'Npm', 'Pnpm', 'Pip', 'Uv', 'Cargo', 'Vcpkg', 'Gradle', 'Maven')]
+    [string[]]$Caches = @('NuGet', 'Npm', 'Pnpm', 'Pip', 'Uv', 'Cargo', 'Vcpkg', 'Gradle', 'Maven'),
 
     # User (default, no elevation) or Machine (elevated, equivalent to setx /M).
     [ValidateSet('User', 'Machine')]
@@ -80,14 +83,35 @@ Write-Host "Cache root: $Root  (scope: $Scope)" -ForegroundColor Cyan
 $plan = @(
     @{ Cache = 'NuGet';  Name = 'NUGET_PACKAGES';             Sub = '.nuget\packages'; Old = @("$env:USERPROFILE\.nuget\packages") }
     @{ Cache = 'Npm';    Name = 'npm_config_cache';           Sub = 'npm';             Old = @("$env:APPDATA\npm-cache", "$env:LOCALAPPDATA\npm-cache") }
+    # pnpm 11 reads config from pnpm_config_* env vars; npm_config_store_dir is ignored.
+    # The store keeps a version subfolder (v11) inside store-dir, so moving the whole old
+    # store folder lands it at <target>\v11 - exactly where pnpm will look.
+    @{ Cache = 'Pnpm';   Name = 'pnpm_config_store_dir';      Sub = 'pnpm';            Old = @("$env:LOCALAPPDATA\pnpm\store") }
     @{ Cache = 'Pip';    Name = 'PIP_CACHE_DIR';              Sub = 'pip';             Old = @("$env:LOCALAPPDATA\pip\Cache") }
+    @{ Cache = 'Uv';     Name = 'UV_CACHE_DIR';               Sub = 'uv';              Old = @("$env:LOCALAPPDATA\uv\cache") }
     @{ Cache = 'Cargo';  Name = 'CARGO_HOME';                 Sub = 'cargo';           Old = @("$env:USERPROFILE\.cargo") }
     @{ Cache = 'Vcpkg';  Name = 'VCPKG_DEFAULT_BINARY_CACHE'; Sub = 'vcpkg';           Old = @("$env:LOCALAPPDATA\vcpkg\archives", "$env:APPDATA\vcpkg\archives") }
     @{ Cache = 'Gradle'; Name = 'GRADLE_USER_HOME';           Sub = 'gradle';          Old = @("$env:USERPROFILE\.gradle") }
     @{ Cache = 'Maven';  Name = 'MAVEN_OPTS';                 Sub = 'maven';           Old = @("$env:USERPROFILE\.m2\repository"); Template = '-Dmaven.repo.local={0}' }
 )
 
+# Processes whose executable or command line points into a folder. Moving a cache out
+# from under a live process breaks it (npx-launched MCP servers run from npm-cache\_npx).
+# WhatIf is suspended for the CimCmdlets auto-import only; otherwise its alias setup
+# prints a dozen "What if: Set Alias" lines.
+$procs = @()
+if ($Move) {
+    $savedWhatIf = $WhatIfPreference; $WhatIfPreference = $false
+    try { Import-Module CimCmdlets -ErrorAction SilentlyContinue } finally { $WhatIfPreference = $savedWhatIf }
+    $procs = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)
+}
+function Get-ProcessesUsing([string]$Path) {
+    $p = [regex]::Escape($Path.TrimEnd('\'))
+    @($procs | Where-Object { "$($_.ExecutablePath) $($_.CommandLine)" -match "(?i)$p(\\|""|\s|$)" })
+}
+
 $changed = 0
+$leftBehind = @()
 foreach ($item in $plan | Where-Object { $Caches -contains $_.Cache }) {
     $target = Join-Path $Root $item.Sub
     $value = if ($item.Template) { $item.Template -f $target } else { $target }
@@ -112,7 +136,18 @@ foreach ($item in $plan | Where-Object { $Caches -contains $_.Cache }) {
     if ($Move) {
         foreach ($old in $item.Old) {
             if ((Test-Path $old) -and ((Get-ChildItem -LiteralPath $old -Force -ErrorAction SilentlyContinue).Count -gt 0)) {
-                if ($PSCmdlet.ShouldProcess("$old -> $target", 'robocopy /MOVE')) {
+                # @() at the call site: PowerShell 5.1 unrolls a one-element array to a bare
+                # CimInstance, whose .Count is $null - the in-use check would silently pass.
+                $users = @(Get-ProcessesUsing $old)
+                if ($users.Count) {
+                    $names = ($users | ForEach-Object { "$($_.Name) ($($_.ProcessId))" }) -join ', '
+                    if ($PSCmdlet.ShouldProcess("$old -> $target", 'robocopy (copy - in use)')) {
+                        Write-Warning "  $old is in use by $names - copying instead of moving."
+                        & robocopy $old $target /E /NFL /NDL /NJH /NJS /R:1 /W:1 | Out-Null
+                        if ($LASTEXITCODE -ge 8) { Write-Warning "  robocopy returned $LASTEXITCODE for $old - check for locked files." }
+                        $leftBehind += $old
+                    }
+                } elseif ($PSCmdlet.ShouldProcess("$old -> $target", 'robocopy /MOVE')) {
                     Write-Host "  moving $old -> $target" -ForegroundColor Yellow
                     & robocopy $old $target /E /MOVE /NFL /NDL /NJH /NJS /R:1 /W:1 | Out-Null
                     if ($LASTEXITCODE -ge 8) { Write-Warning "  robocopy returned $LASTEXITCODE for $old - check for locked files." }
@@ -133,6 +168,19 @@ if ($changed) {
     Write-Host "$changed variable(s) set. Restart open consoles, IDEs and Visual Studio (or reboot) for the new values to apply." -ForegroundColor Cyan
 } else {
     Write-Host 'Nothing changed.' -ForegroundColor Cyan
+}
+
+if ($leftBehind.Count) {
+    Write-Host ''
+    Write-Host 'Copied, not moved (in use) - delete these once the processes above have exited:' -ForegroundColor Yellow
+    $leftBehind | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
+}
+
+if ($Caches -contains 'Pnpm') {
+    Write-Host ''
+    Write-Host 'pnpm note: set via pnpm_config_store_dir rather than "pnpm config set store-dir", which' -ForegroundColor DarkGray
+    Write-Host 'refuses to run when pnpm''s global bin directory is not on PATH. Verify from a folder on the' -ForegroundColor DarkGray
+    Write-Host 'Dev Drive with: pnpm store path. Old per-drive stores (<drive>:\.pnpm-store) are not moved.' -ForegroundColor DarkGray
 }
 
 if ($Caches -contains 'NuGet') {
