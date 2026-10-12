@@ -96,6 +96,7 @@ in the upgrade is opt-in. Mention it, don't apply it unasked.
 | "Today" energy shows a huge number | baseline from a day the meter reported garbage | already guarded against by `todayDelta`. If it still happens, the counter isn't really monotonic: use a `utility_meter` helper in HA with `today: false` |
 | "Today" tile blank on a new sensor | no history before midnight yet | fills in from the next day |
 | Change deployed but tablet shows old | stamping bypassed: a dynamic import, a non-relative import, or a runtime-built URL without `assetUrl()` | [deploy.md](deploy.md) → cache-busting |
+| "Tablet time zone … ≠ Home Assistant …" bottom-right | tablet set to another zone (often UTC); "today" values reset at the wrong hour | fix the zone in the tablet's settings; [kiosk.md](kiosk.md) → Time zone |
 | Weather forecast strip empty | provider has no `get_forecasts` for that type | try `forecast: 'hourly'`, or another weather integration |
 | Calendar empty but HA shows events | events outside the `days` window, or `skipMultiDay` filtered them | calendar config |
 | Layout taller than the screen, cut off | a new grid track with plain `1fr` | use `minmax(0, 1fr)`; [gotchas.md](gotchas.md) |

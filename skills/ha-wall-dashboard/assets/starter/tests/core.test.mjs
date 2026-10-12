@@ -5,7 +5,7 @@ import { buildCallService, backoffDelay } from '../core/ws-protocol.js';
 import { connectLive } from '../core/ha-client.js';
 import { todayDelta } from '../core/history.js';
 import { num, displayUnit } from '../core/format.js';
-import { translator } from '../core/i18n.js';
+import { translator, timeZoneNotice } from '../core/i18n.js';
 
 test('store: subscribe fires immediately, then on change', () => {
   const store = new StateStore();
@@ -119,4 +119,13 @@ test('client: a missed pong reconnects at once, without waiting for onclose', as
   client.close();
   assert.ok(scheduled.length >= 1, 'a reconnect was scheduled');
   assert.equal(sockets[0].onmessage, null, 'the dead socket was detached');
+});
+
+test('timeZoneNotice: same offset is fine, a different one warns', () => {
+  const t = translator('en');
+  const winter = new Date('2026-01-15T12:00:00Z');
+  assert.equal(timeZoneNotice(t, 'Europe/Brussels', 'Europe/Brussels', winter), null);
+  assert.equal(timeZoneNotice(t, 'Europe/Amsterdam', 'Europe/Brussels', winter), null);
+  assert.equal(timeZoneNotice(t, 'UTC', 'Europe/Brussels', winter), 'Tablet time zone UTC ≠ Home Assistant Europe/Brussels');
+  assert.equal(timeZoneNotice(t, 'UTC', undefined, winter), null);
 });

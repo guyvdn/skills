@@ -11,6 +11,7 @@ export default {
   themeOverrides: {},         // e.g. { '--accent': '#7CFFB2' }
   scale: 1,                   // all text and icons; 1.15 = 15 % bigger
   labels: {},                 // override a built-in string, e.g. { allClear: 'All shut' }
+  // timeZone: 'Europe/Brussels', // the clock's zone; default: Home Assistant's own
 
   columns: [
     {

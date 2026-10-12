@@ -277,4 +277,11 @@ button.tile:active { transform: scale(.97); }
   border-radius: 999px; background: rgba(0,0,0,.65); border: 2px solid currentColor;
 }
 .conn.is-warn { color: var(--warn); }
+/* Standing notices (e.g. tablet time zone ≠ HA's): bottom-right, same look. */
+.notice {
+  position: fixed; right: var(--gap); bottom: var(--gap); z-index: 20;
+  font-size: calc(var(--sz-sm) * .8); padding: calc(.5 * var(--u)) calc(1.4 * var(--u));
+  border-radius: 999px; background: rgba(0,0,0,.65); border: 2px solid currentColor;
+}
+.notice.is-warn { color: var(--warn); }
 .conn.is-error { color: var(--danger); }

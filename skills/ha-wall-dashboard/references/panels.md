@@ -16,7 +16,8 @@ unknown ones. To add one, copy the SVG path from pictogrammers into `ICONS`.
 ## The catalogue
 
 ### `clock`
-Big time and the date, in the configured locale.
+Big time and the date, in the configured locale and in **Home Assistant's time
+zone** (or the top-level `timeZone` in the config), whatever the tablet is set to.
 `{ type: 'clock', seconds: false, hour12: <locale default> }`
 
 ### `weather`

@@ -52,11 +52,17 @@ missing side means a system bar overlaps the page.
 
 ## Time zone
 
-The clock, the calendar's "today/tomorrow" and every "today since midnight"
-value use the **tablet's** time zone, not HA's. Cheap tablets often ship set to
-UTC, so the energy tiles then reset at 01:00 or 02:00 local time and the clock is off.
-`measure.html` shows the tablet's zone. Compare it with `ha.timeZone` in
-`inventory.json`, and fix it in Android's date settings if they differ.
+The **clock** always shows Home Assistant's time zone (or `timeZone` in the
+config), so it's right even on a tablet set to the wrong zone. Everything
+**day-based** — the calendar's days, "today since midnight" energy — follows the
+**tablet's** own zone. Cheap tablets often ship set to UTC, and then "today" resets at
+01:00 or 02:00 local time.
+
+So when the two zones differ, the dashboard shows a standing warning bottom-right
+("Tablet time zone UTC ≠ Home Assistant Europe/Brussels"). Zones with the same
+current offset don't count as different. The fix is on the tablet: Android
+Settings → Date & time → automatic time zone, or pick the zone. `measure.html`
+shows the tablet's zone too.
 
 ## Touch
 
