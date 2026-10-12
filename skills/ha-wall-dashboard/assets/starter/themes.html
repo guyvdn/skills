@@ -1,0 +1,126 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Theme preview</title>
+  <link rel="stylesheet" href="./style.css">
+  <style>
+    /* The preview's own controls — not part of any theme. */
+    .pv-bar {
+      position: fixed; right: 16px; bottom: 16px; z-index: 30; display: flex; gap: 8px;
+      font: 16px system-ui, sans-serif;
+    }
+    .pv-bar button {
+      padding: 10px 16px; border-radius: 999px; color: #fff; background: rgba(0,0,0,.6);
+      border: 2px solid rgba(255,255,255,.35); font: inherit;
+    }
+    .pv-bar button.is-current { border-color: #fff; background: rgba(0,0,0,.85); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <!--
+    Shows every theme with the real panels on fake data, no Home Assistant
+    needed. Deploy it with the dashboard and open it ON THE WALL TABLET:
+    colours that look right on a monitor can look very different on a cheap
+    panel (deep orange turns brown, dark greys crush to black).
+    ?theme=nord opens a given theme; ?scale=1.2 tries a text size.
+  -->
+  <script>
+    // Same self-bust as index.html (HA caches /local/ for 31 days), keeping
+    // ?theme= and ?scale= across the redirect.
+    const q = new URLSearchParams(location.search);
+    const v = parseInt(q.get('v') || '0', 10);
+    if (!(v > 0 && Date.now() - v < 10000)) { q.set('v', Date.now()); location.replace(location.pathname + '?' + q); }
+  </script>
+  <main id="dash" class="dash"></main>
+  <nav class="pv-bar" id="bar"></nav>
+  <script type="module">
+    import { StateStore } from './core/state-store.js';
+    import { translator } from './core/i18n.js';
+    import { mountLayout, applyTheme, applyLook } from './core/layout.js';
+
+    const THEMES = ['tron', 'synthwave', 'nord', 'amber', 'daylight'];
+    const params = new URLSearchParams(location.search);
+    let current = params.get('theme') ?? THEMES[0];
+    if (params.get('scale')) applyLook({ scale: params.get('scale') });
+
+    const s = (entity_id, state, attributes = {}) => ({ entity_id, state, attributes });
+    const store = new StateStore();
+    store.setAll([
+      s('weather.demo', 'partlycloudy', { temperature: 18.4, temperature_unit: '°C', humidity: 64, wind_speed: 14, wind_speed_unit: 'km/h' }),
+      s('climate.living', 'heat', { current_temperature: 20.6, temperature: 21.5, target_temp_step: 0.5, friendly_name: 'Living' }),
+      s('climate.bedroom', 'off', { current_temperature: 18.1, temperature: 18, target_temp_step: 0.5, friendly_name: 'Bedroom' }),
+      s('light.living', 'on'), s('light.kitchen', 'off'), s('switch.garden', 'off'),
+      s('scene.movie', 'scening'), s('lock.front', 'locked'), s('light.hall', 'unavailable'),
+      s('sensor.living_temp', '20.6', { unit_of_measurement: '°C' }),
+      s('sensor.elec', '6.8', { unit_of_measurement: 'kWh' }),
+      s('sensor.gas', '2.31', { unit_of_measurement: 'm³' }),
+      s('sensor.power', '2480', { unit_of_measurement: 'W' }),
+      s('binary_sensor.back_door', 'on', { device_class: 'door' }),
+      s('binary_sensor.front_door', 'off', { device_class: 'door' }),
+      s('media_player.kitchen', 'playing', { media_title: 'Midnight City', media_artist: 'M83', friendly_name: 'Kitchen speaker' }),
+    ]);
+
+    const day = (i) => new Date(Date.now() + i * 864e5).toISOString();
+    const forecast = ['sunny', 'rainy', 'cloudy', 'lightning-rainy', 'snowy'].map((condition, i) => ({
+      datetime: day(i + 1), condition, temperature: 19 - i * 2, templow: 9 - i, precipitation_probability: [0, 80, 20, 60, 30][i],
+    }));
+    // Fake client: taps flip the fake state so the "on" look can be tried too.
+    const client = {
+      callService(domain, service, target, data) {
+        const id = target.entity_id, cur = store.get(id);
+        if (service === 'toggle') store.set(id, { ...cur, state: cur.state === 'on' ? 'off' : 'on' });
+        if (domain === 'climate' && service === 'set_temperature') store.set(id, { ...cur, attributes: { ...cur.attributes, temperature: data.temperature } });
+        if (domain === 'climate' && service.startsWith('turn_')) store.set(id, { ...cur, state: service === 'turn_on' ? 'heat' : 'off' });
+        return true;
+      },
+      async callServiceForResponse() { return { 'weather.demo': { forecast } }; },
+    };
+
+    const columns = [
+      { width: 1, panels: [
+        { type: 'weather', size: 1, entity: 'weather.demo' },
+        { type: 'climate', size: 1, items: [{ entity: 'climate.living' }, { entity: 'climate.bedroom' }] },
+      ] },
+      { width: 1.15, panels: [
+        { type: 'clock', size: 1 },
+        { type: 'media', size: 1, entity: 'media_player.kitchen' },
+        { type: 'status', size: 0.7, title: 'Doors', items: [{ entity: 'binary_sensor.back_door', name: 'Back door' }, { entity: 'binary_sensor.front_door', name: 'Front door' }] },
+      ] },
+      { width: 1, panels: [
+        { type: 'toggles', size: 2, columns: 3, items: [
+          { entity: 'light.living', name: 'Living room', icon: 'sofa', value: { entity: 'sensor.living_temp', decimals: 1 } },
+          { entity: 'light.kitchen', name: 'Kitchen', icon: 'silverware-fork-knife' },
+          { entity: 'switch.garden', name: 'Garden lights', icon: 'lamp' },
+          { entity: 'scene.movie', name: 'Movie', icon: 'television' },
+          { entity: 'lock.front', name: 'Front' },
+          { entity: 'light.hall', name: 'Hall', icon: 'stairs' },
+        ] },
+        { type: 'sensors', size: 1, columns: 3, items: [
+          { entity: 'sensor.elec', name: 'Power', icon: 'flash', decimals: 1 },
+          { entity: 'sensor.gas', name: 'Gas', icon: 'fire', decimals: 2 },
+          { entity: 'sensor.power', name: 'Now', icon: 'gauge', decimals: 0, warnAbove: 2000, dangerAbove: 4000 },
+        ] },
+      ] },
+    ];
+
+    const ctx = { store, client, token: '', baseUrl: location.origin, locale: navigator.language, t: translator(navigator.language) };
+    mountLayout(document.getElementById('dash'), columns, ctx);
+
+    const bar = document.getElementById('bar');
+    function show(name) {
+      current = name;
+      applyTheme(name, store);
+      for (const b of bar.children) b.classList.toggle('is-current', b.textContent === name);
+    }
+    for (const name of THEMES) {
+      const b = document.createElement('button');
+      b.textContent = name;
+      b.addEventListener('click', () => show(name));
+      bar.append(b);
+    }
+    show(current);
+  </script>
+</body>
+</html>

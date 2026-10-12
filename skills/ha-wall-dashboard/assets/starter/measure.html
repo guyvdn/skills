@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Measure</title>
+  <style>
+    html, body { height: 100%; margin: 0; background: #0b1220; color: #e6edf5; font: 5vmin system-ui, sans-serif; }
+    body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2vmin; }
+    #size { font-size: 14vmin; font-variant-numeric: tabular-nums; }
+    #more { color: #9fb1c2; text-align: center; line-height: 1.5; }
+    #touch { color: #69f0ae; min-height: 1.5em; }
+    /* A 1px frame on the real viewport edge: if any side is missing, part of
+       the page is hidden behind a system bar and the numbers lie. */
+    .edge { position: fixed; inset: 0; border: 4px solid #00e5ff; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <!--
+    Open this page ON THE WALL TABLET, in the browser the dashboard will run in
+    (e.g. Fully Kiosk), with that browser's fullscreen settings already on.
+    Report the big number back: it is the size the layout must fit, which is
+    rarely the panel resolution in the spec sheet.
+  -->
+  <div class="edge"></div>
+  <div id="size"></div>
+  <div id="more"></div>
+  <div id="touch">Tap anywhere to test touch</div>
+  <script>
+    function paint() {
+      const vv = window.visualViewport;
+      document.getElementById('size').textContent = `${innerWidth} × ${innerHeight}`;
+      document.getElementById('more').innerHTML = [
+        `devicePixelRatio ${devicePixelRatio}`,
+        `screen ${screen.width} × ${screen.height}`,
+        vv ? `visualViewport ${Math.round(vv.width)} × ${Math.round(vv.height)}` : '',
+        `client ${document.documentElement.clientWidth} × ${document.documentElement.clientHeight}`,
+        // The clock, the calendar's days and "today" energy all use the TABLET's
+        // time zone, not HA's. Cheap tablets often ship set to UTC.
+        `time zone ${Intl.DateTimeFormat().resolvedOptions().timeZone} · ${new Date().toTimeString().slice(0, 5)}`,
+        navigator.userAgent.match(/(Android [\d.]+|iPad|iPhone OS [\d_]+|Windows NT [\d.]+)/)?.[0] ?? '',
+      ].filter(Boolean).join('<br>');
+    }
+    paint();
+    addEventListener('resize', paint);
+    addEventListener('pointerdown', (e) => {
+      document.getElementById('touch').textContent = `${e.pointerType} at ${Math.round(e.clientX)}, ${Math.round(e.clientY)}`;
+    });
+  </script>
+</body>
+</html>

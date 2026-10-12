@@ -1,0 +1,10 @@
+# The long-lived HA token. Never commit it.
+www/config.local.js
+
+# Discovery output: every entity in the house, with current states.
+inventory.json
+
+# Browser test captures
+.playwright-mcp/
+*.png
+!www/**/*.png

@@ -24,6 +24,7 @@ npx skills add guyvdn/skills
 | [interactive-reveal-deck](skills/interactive-reveal-deck/) | Build a presentation as a reveal.js deck with a designed interface and interactive demo panels instead of static bullets — per-part accent colours, a chapter rail, a jump-to-slide palette, an annotation layer, and widgets the presenter drives from the clicker. Ships the theme, the code-window tokenizer (C#, JSON, TS), six widget patterns, a scaffold script and a layout verifier. |
 | [claude-code-sessions](skills/claude-code-sessions/) | Identify the Claude Code sessions running on this machine — map each one's friendly name to its session id, working directory and pid. Covers why the name is the address and the id usually is not, and why a live pid alone is not a live session. |
 | [remarkable](skills/remarkable/) | Read, transcribe and summarize handwritten notebooks from a reMarkable tablet — lists the tablet over USB (10.11.99.1) or the cloud (rmapi), exports a notebook to PDF, rasterises the pages for vision OCR, and writes a transcript plus a summary of decisions, actions and unanswered questions. Includes the transcription honesty rules and why a VPN makes a plugged-in tablet unreachable. |
+| [ha-wall-dashboard](skills/ha-wall-dashboard/) | Build and maintain a Home Assistant wall-tablet dashboard — a themeable vanilla-JS web app served from HA's own `www` folder, live over the WebSocket API. A setup wizard discovers the entities, picks panels, theme (five built in, previewable on the tablet) and layout; scripts scaffold, validate the config against the live HA, deploy with cache-busting, and upgrade without trampling local edits. |
 
 ## Usage
 
@@ -63,10 +64,25 @@ After installing, ask your AI agent:
 - *"Pull the action items out of my reMarkable notebook"*
 - *"Which notebook did I write about the migration in?"*
 - *"My reMarkable is plugged in but I can't reach 10.11.99.1"*
+- *"Set up a Home Assistant dashboard for the tablet on my wall"*
+- *"Add the garden lights to my wall dashboard"*
+- *"My wall dashboard shows a dash instead of the temperature"*
+- *"Make the dashboard switch to a light theme during the day"*
 
 ## Scripts
 
 Skills include standalone PowerShell scripts (requires admin). Run from the **repo root**:
+
+Node scripts (Node 22+, any OS):
+
+```bash
+# Home Assistant wall dashboard: new project, inventory, validate, deploy, upgrade
+node skills/ha-wall-dashboard/scripts/scaffold.mjs --to ~/wall-dashboard --name wall --ha-url http://homeassistant.local:8123
+node skills/ha-wall-dashboard/scripts/discover.mjs --project ~/wall-dashboard
+node skills/ha-wall-dashboard/scripts/check-config.mjs --project ~/wall-dashboard
+node skills/ha-wall-dashboard/scripts/deploy.mjs --project ~/wall-dashboard --to '\\homeassistant.local\config\www\wall'
+node skills/ha-wall-dashboard/scripts/scaffold.mjs --to ~/wall-dashboard --upgrade
+```
 
 ```powershell
 # Service & startup cleanup (leaves IIS alone by default)

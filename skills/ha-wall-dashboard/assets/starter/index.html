@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <script>
+    // Always load a fresh index.html: HA serves /local/ with a 31-day cache and a
+    // kiosk browser has no hard-refresh. Redirect to ?v=NOW unless the current
+    // ?v= is under 10 s old (i.e. we just redirected). Judged by age, not by
+    // navigation type: Fully Kiosk restores its last URL, old ?v= included, as
+    // a plain 'navigate', which a navigation-type check mistakes for our own
+    // redirect — and the stale page then stays forever.
+    const v = parseInt(new URLSearchParams(location.search).get('v') || '0', 10);
+    if (!(v > 0 && Date.now() - v < 10000)) location.replace(location.pathname + '?v=' + Date.now());
+  </script>
+  <main id="dash" class="dash"></main>
+  <div id="conn" class="conn" hidden></div>
+  <script type="module">
+    import { boot } from './core/app.js';
+    boot();
+  </script>
+</body>
+</html>

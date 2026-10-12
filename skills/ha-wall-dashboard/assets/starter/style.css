@@ -1,0 +1,280 @@
+/* ==========================================================================
+   Fonts (self-hosted: a wall tablet must not depend on Google being reachable)
+   ========================================================================== */
+@font-face { font-family: 'Share Tech'; src: url('./fonts/ShareTech.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'Share Tech Mono'; src: url('./fonts/ShareTechMono.woff2') format('woff2'); font-display: swap; }
+
+/* ==========================================================================
+   Sizing — everything scales from one unit tied to the viewport, so the same
+   config works on a 1280×800 tablet and a 1920×1200 one. `scale` in the
+   config multiplies it. --u is 1vh on a 16:10 landscape screen.
+   ========================================================================== */
+:root {
+  --scale: 1;
+  --u: calc(min(1vh, 0.625vw) * var(--scale));
+  --sz-sm: calc(2 * var(--u));     /* names, labels, calendar rows   */
+  --sz-md: calc(3.3 * var(--u));   /* values, day headings, date     */
+  --sz-lg: calc(4.5 * var(--u));   /* weather temperature            */
+  --sz-xl: calc(12.5 * var(--u));  /* the clock                      */
+  --icon: calc(5.8 * var(--u));
+  --gap: calc(1.6 * var(--u));
+  --pad: calc(1.8 * var(--u));
+}
+
+/* ==========================================================================
+   Themes. Every colour the components use is one of these tokens; a new theme
+   is a new block. Semantic rule: --accent = normal/active, --warn = needs
+   attention, --danger = something is broken. Never use --danger for decoration.
+   ========================================================================== */
+:root, [data-theme="tron"] {
+  --bg: radial-gradient(ellipse 140% 100% at 50% -20%, #1c2a3c 0%, #101b2b 45%, #070d16 100%);
+  --font: 'Share Tech', system-ui, sans-serif;
+  --font-mono: 'Share Tech Mono', ui-monospace, monospace;
+  --accent: #00E5FF; --accent-soft: #4FD8FF; --accent-dim: #6FC9E0;
+  --warn: #FF8800; --danger: #FF5252; --ok: #69F0AE;
+  --text: #BDD0DF; --text-2: #9FB1C2; --text-dim: #566472;
+  --card-bg: linear-gradient(150deg, rgba(54,72,98,.50), rgba(20,30,46,.32));
+  --card-on-bg: linear-gradient(150deg, rgba(0,140,170,.45), rgba(20,60,80,.30));
+  --card-border: rgba(130,175,205,.18); --card-on-border: rgba(0,229,255,.45);
+  --border-w: 2px; --radius: calc(2.2 * var(--u)); --blur: 14px;
+  --shadow: 0 12px 36px rgba(0,0,0,.45);
+  --glow: drop-shadow(0 0 calc(0.9 * var(--u)) rgba(0,229,255,.7));
+  --title-case: uppercase; --title-spacing: .12em;
+}
+
+[data-theme="synthwave"] {
+  --bg: linear-gradient(180deg, #12061f 0%, #241040 55%, #3a1257 100%);
+  --font: 'Share Tech Mono', ui-monospace, monospace;
+  --font-mono: 'Share Tech Mono', ui-monospace, monospace;
+  --accent: #FF2E97; --accent-soft: #FF71CE; --accent-dim: #B967FF;
+  --warn: #FFD319; --danger: #FF3864; --ok: #05FFA1;
+  --text: #F5E9FF; --text-2: #C9B3E6; --text-dim: #6E5490;
+  --card-bg: linear-gradient(160deg, rgba(60,20,100,.55), rgba(25,8,45,.45));
+  --card-on-bg: linear-gradient(160deg, rgba(255,46,151,.35), rgba(90,20,110,.40));
+  --card-border: rgba(255,113,206,.22); --card-on-border: rgba(255,46,151,.65);
+  --border-w: 2px; --radius: calc(1.2 * var(--u)); --blur: 10px;
+  --shadow: 0 0 24px rgba(185,103,255,.18), 0 12px 30px rgba(0,0,0,.5);
+  --glow: drop-shadow(0 0 calc(1 * var(--u)) rgba(255,46,151,.8));
+  --title-case: uppercase; --title-spacing: .18em;
+}
+
+[data-theme="nord"] {
+  --bg: #2E3440;
+  --font: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', 'Roboto Mono', monospace;
+  --accent: #88C0D0; --accent-soft: #8FBCBB; --accent-dim: #81A1C1;
+  --warn: #EBCB8B; --danger: #BF616A; --ok: #A3BE8C;
+  --text: #ECEFF4; --text-2: #D8DEE9; --text-dim: #616E88;
+  --card-bg: #3B4252; --card-on-bg: #434C5E;
+  --card-border: #434C5E; --card-on-border: #88C0D0;
+  --border-w: 1px; --radius: calc(1.6 * var(--u)); --blur: 0px;
+  --shadow: 0 2px 8px rgba(0,0,0,.25);
+  --glow: none;
+  --title-case: none; --title-spacing: .02em;
+}
+
+[data-theme="amber"] {
+  --bg: radial-gradient(ellipse at center, #1a1100 0%, #0b0700 70%, #050300 100%);
+  --font: 'Share Tech Mono', ui-monospace, monospace;
+  --font-mono: 'Share Tech Mono', ui-monospace, monospace;
+  --accent: #FFB000; --accent-soft: #FFC940; --accent-dim: #B37B00;
+  --warn: #FFF1C2; --danger: #FF4D4D; --ok: #FFD27F;
+  --text: #FFC94A; --text-2: #C99A2E; --text-dim: #5E4510;
+  --card-bg: rgba(255,176,0,.03); --card-on-bg: rgba(255,176,0,.14);
+  --card-border: rgba(255,176,0,.30); --card-on-border: rgba(255,176,0,.85);
+  --border-w: 1px; --radius: 0px; --blur: 0px;
+  --shadow: none;
+  --glow: drop-shadow(0 0 calc(0.7 * var(--u)) rgba(255,176,0,.75));
+  --title-case: uppercase; --title-spacing: .2em;
+}
+/* CRT scanlines, amber only. pointer-events:none so it never eats a tap. */
+[data-theme="amber"] body::after {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 10;
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px);
+}
+
+[data-theme="daylight"] {
+  --bg: linear-gradient(180deg, #F6F8FB 0%, #E8EDF3 100%);
+  --font: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', 'Roboto Mono', monospace;
+  --accent: #0A84FF; --accent-soft: #3D9BFF; --accent-dim: #2F6FB3;
+  --warn: #D97000; --danger: #D92D20; --ok: #12A150;
+  --text: #18212B; --text-2: #4A5867; --text-dim: #A3AEBA;
+  --card-bg: #FFFFFF; --card-on-bg: #E6F1FF;
+  --card-border: rgba(15,30,60,.08); --card-on-border: rgba(10,132,255,.45);
+  --border-w: 1px; --radius: calc(2 * var(--u)); --blur: 0px;
+  --shadow: 0 4px 18px rgba(15,30,60,.08);
+  --glow: none;
+  --title-case: none; --title-spacing: .01em;
+}
+
+/* ==========================================================================
+   Page + layout
+   ========================================================================== */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  background: var(--bg); color: var(--text); font-family: var(--font);
+  -webkit-tap-highlight-color: transparent; user-select: none;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+
+/* Columns come from the config (app.js sets grid-template-columns/rows).
+   minmax(0, Nfr) everywhere: plain fr keeps a min-content floor and content
+   then pushes the page taller than the screen. */
+.dash { display: grid; height: 100%; gap: var(--gap); padding: var(--gap); }
+.dash-col { display: grid; gap: var(--gap); min-height: 0; min-width: 0; }
+
+.panel { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.panel-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.panel-title {
+  font-size: var(--sz-sm); font-weight: 400; color: var(--text-2);
+  text-transform: var(--title-case); letter-spacing: var(--title-spacing);
+  margin-bottom: calc(var(--gap) * .6);
+}
+
+.card {
+  background: var(--card-bg);
+  backdrop-filter: blur(var(--blur)) saturate(130%);
+  border: var(--border-w) solid var(--card-border);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: var(--pad);
+}
+.card.is-broken { color: var(--danger); font-size: var(--sz-sm); }
+
+.unit { font-size: .6em; vertical-align: baseline; margin-left: .05em; }
+.unit-sup { vertical-align: top; }
+
+/* ==========================================================================
+   Tiles (toggles, climate, sensors, energy)
+   ========================================================================== */
+.tile-grid { display: grid; grid-auto-rows: minmax(0, 1fr); gap: var(--gap); height: 100%; }
+
+.tile {
+  position: relative; display: grid;
+  grid-template-columns: minmax(0, 1fr);          /* full width, so corners reach the edges */
+  grid-template-rows: 1fr 1.6fr 1fr 1fr;
+  align-items: center; justify-items: center;
+  padding: calc(var(--pad) * .8); height: 100%; min-height: 0; text-align: center;
+  background: var(--card-bg); backdrop-filter: blur(var(--blur)) saturate(130%);
+  border: var(--border-w) solid var(--card-border); border-radius: var(--radius);
+  box-shadow: var(--shadow); color: var(--text-dim);
+  transition: background .2s, border-color .2s, color .2s, transform .1s;
+}
+button.tile:active { transform: scale(.97); }
+.tile-top { grid-row: 1; align-self: start; display: flex; justify-content: space-between; align-items: center; width: 100%; }
+.tile-tl, .tile-tr { font-size: var(--sz-sm); color: var(--text-2); font-variant-numeric: tabular-nums; line-height: 1; display: flex; }
+.tile-center { grid-row: 2; display: flex; align-items: center; justify-content: center; }
+.tile-center svg { width: var(--icon); height: var(--icon); }
+.tile-value { grid-row: 3; font-size: var(--sz-md); color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.tile-name {
+  grid-row: 4; font-size: var(--sz-sm); color: var(--text-2);
+  text-transform: var(--title-case); letter-spacing: var(--title-spacing);
+  /* Full width (not shrink-to-fit), so the fit-to-width JS in tile.js measures
+     a fixed box and shrinking the font can't change the width it reacts to. */
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;
+}
+
+.tile.is-on { background: var(--card-on-bg); border-color: var(--card-on-border); color: var(--accent); }
+.tile.is-on .tile-center { filter: var(--glow); }
+.tile.is-warm { color: var(--warn); border-color: var(--warn); }
+.tile.is-warn .tile-value, .tile.is-warn .tile-center { color: var(--warn); }
+.tile.is-danger .tile-value, .tile.is-danger .tile-center { color: var(--danger); }
+.tile.is-ok .tile-value, .tile.is-ok .tile-center { color: var(--ok); }
+.tile.is-unavailable { opacity: .45; }
+.tile.is-pulse { border-color: var(--card-on-border); color: var(--accent); }
+.tile.is-failed { border-color: var(--danger); }
+.tile-sensor .tile-center { color: var(--accent-dim); }
+
+/* Climate setpoint buttons: big touch targets in the tile corners. */
+.climate-step {
+  display: flex; width: calc(5 * var(--u)); height: calc(5 * var(--u));
+  padding: calc(.9 * var(--u)); border-radius: 50%;
+  border: var(--border-w) solid var(--card-border); color: var(--text-2);
+}
+.climate-step:active { background: var(--card-on-bg); }
+.climate-target { color: var(--text-2); }
+.climate-target.is-pending { color: var(--accent); }
+
+/* ==========================================================================
+   Clock
+   ========================================================================== */
+.panel-clock .panel-body { justify-content: center; align-items: center; }
+.clock-time { font-size: var(--sz-xl); line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: .03em; }
+.clock-date { font-size: var(--sz-md); color: var(--accent-dim); margin-top: calc(.6 * var(--u)); }
+
+/* ==========================================================================
+   Weather
+   ========================================================================== */
+.panel-weather .panel-body { justify-content: space-between; gap: var(--gap); }
+.wx-now { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: var(--gap); align-items: center; }
+.wx-icon { grid-row: 1 / 3; width: calc(9 * var(--u)); height: calc(9 * var(--u)); color: var(--accent-dim); }
+.wx-temp { font-size: var(--sz-lg); color: var(--text); }
+.wx-meta { font-size: var(--sz-sm); color: var(--text-2); }
+.wx-forecast { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: calc(.5 * var(--gap)); }
+.wx-day { display: flex; flex-direction: column; align-items: center; gap: calc(.3 * var(--u)); font-size: var(--sz-sm); }
+.wx-day-label { color: var(--text-2); text-transform: capitalize; }
+.wx-day-icon { width: calc(4.5 * var(--u)); height: calc(4.5 * var(--u)); color: var(--text-2); }
+.wx-day-hi { color: var(--text); }
+.wx-day-lo, .wx-day-rain { color: var(--text-dim); }
+.wx-day-rain { color: var(--accent-dim); min-height: 1em; }
+[data-tone="sun"]  { color: var(--warn); }
+[data-tone="rain"] { color: var(--accent-soft); }
+[data-tone="cold"] { color: var(--text); }
+
+/* ==========================================================================
+   Calendar
+   ========================================================================== */
+.panel-calendar .panel-body { overflow-y: auto; scrollbar-width: none; }
+.panel-calendar .panel-body::-webkit-scrollbar { display: none; }
+.cal-day { padding: calc(.8 * var(--u)) 0; border-bottom: 1px solid var(--card-border); }
+.cal-day:last-child { border-bottom: 0; }
+.cal-day-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: calc(.5 * var(--u)); }
+.cal-weekday { font-size: var(--sz-md); color: var(--text); }
+.cal-date { font-size: var(--sz-sm); color: var(--accent-dim); }
+.cal-event { display: grid; grid-template-columns: calc(14 * var(--u)) 1fr; gap: var(--u); padding: calc(.3 * var(--u)) 0; font-size: var(--sz-sm); }
+.cal-time { color: var(--evt-color, var(--accent-soft)); font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cal-title { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-empty, .cal-error { font-size: var(--sz-sm); color: var(--text-2); margin: auto; }
+.cal-error { color: var(--danger); }
+
+/* ==========================================================================
+   Media
+   ========================================================================== */
+.panel-media .panel-body { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: 1fr auto; gap: var(--gap); }
+.media-art { grid-row: 1; height: 100%; aspect-ratio: 1; max-height: calc(16 * var(--u)); border-radius: calc(var(--radius) * .6); overflow: hidden; color: var(--text-dim); display: flex; align-items: center; justify-content: center; }
+.media-art img { width: 100%; height: 100%; object-fit: cover; }
+.media-art svg { width: 60%; height: 60%; }
+.media-info { align-self: center; min-width: 0; }
+.media-title { font-size: var(--sz-md); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.media-artist { font-size: var(--sz-sm); color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.media-source { font-size: var(--sz-sm); color: var(--text-dim); margin-top: calc(.4 * var(--u)); }
+.media-controls { grid-column: 1 / -1; display: flex; justify-content: space-around; }
+.media-btn { width: calc(6.5 * var(--u)); height: calc(6.5 * var(--u)); padding: calc(1.2 * var(--u)); color: var(--text-2); border-radius: 50%; }
+.media-btn:active { background: var(--card-on-bg); color: var(--accent); }
+.panel-media.is-playing .media-title { color: var(--accent); }
+
+/* ==========================================================================
+   Status chips
+   ========================================================================== */
+.status-list { display: flex; flex-wrap: wrap; gap: var(--u); align-content: flex-start; }
+.status-chip, .status-clear {
+  display: inline-flex; align-items: center; gap: calc(.6 * var(--u));
+  font-size: var(--sz-sm); padding: calc(.5 * var(--u)) calc(1.2 * var(--u));
+  border-radius: 999px; border: var(--border-w) solid var(--card-border); color: var(--text-2);
+}
+.status-chip.is-on { color: var(--warn); border-color: var(--warn); }
+.status-chip.is-home { color: var(--accent); border-color: var(--card-on-border); }
+.status-clear { color: var(--ok); border-color: transparent; }
+.status-icon, .status-clear svg { width: 1.2em; height: 1.2em; display: inline-flex; }
+
+/* ==========================================================================
+   Connection pill — only visible when something is wrong
+   ========================================================================== */
+.conn {
+  position: fixed; left: var(--gap); bottom: var(--gap); z-index: 20;
+  font-size: var(--sz-sm); padding: calc(.5 * var(--u)) calc(1.4 * var(--u));
+  border-radius: 999px; background: rgba(0,0,0,.65); border: 2px solid currentColor;
+}
+.conn.is-warn { color: var(--warn); }
+.conn.is-error { color: var(--danger); }
