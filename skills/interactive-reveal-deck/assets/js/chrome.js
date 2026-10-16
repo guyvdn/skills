@@ -106,12 +106,37 @@ window.DeckChrome = (function () {
     });
   }
 
+  /* ---------------- clicker-driven widgets ----------------
+     A presenter remote sends nothing but next/prev, so an interactive slide
+     spends its first "next" on running its panel and only the press after
+     that moves on. B and R still work and stay in sync with it; entering a
+     slide re-arms it, like every other bit of widget state.
+
+     A widget that wants several presses (a slider that steps, say) says so
+     by exposing `steps` on the object it hands to DeckWidgets.own(). */
+  const NEXT_KEYS = [' ', 'Spacebar', 'ArrowRight', 'PageDown'];
+  const PREV_KEYS = ['ArrowLeft', 'PageUp'];
+  const spent = new WeakMap();    // section -> run() presses already used
+
+  const wants = (api) => {
+    const n = typeof api.steps === 'function' ? api.steps() : api.steps;
+    return Number.isFinite(n) ? n : 1;
+  };
+  /** Does this slide still owe the clicker a run() before it may advance? */
+  function armed(sec) {
+    const api = DeckWidgets.forSection(sec);
+    return !!api && (spent.get(sec) || 0) < wants(api);
+  }
+
   /* ---------------- context hint ---------------- */
   /** Tells the presenter what this slide affords, so nothing needs memorising. */
   function syncHint(current) {
     const el = current.el;
     const bits = [];
-    if (current.interactive) bits.push('B run · R reset');
+    if (current.interactive) {
+      if (el.querySelector('.fragment:not(.visible)')) bits.push('→ builds the slide · R reset');
+      else bits.push(armed(el) ? '→ runs the panel · R reset' : '→ next slide · R again');
+    }
     else if (el.querySelector('.code-step')) bits.push('→ steps through the code');
     const stack = el.closest('.slides > section');
     if (stack && stack.querySelectorAll(':scope > section').length > 1 && current.v === 0) {
@@ -286,7 +311,18 @@ window.DeckChrome = (function () {
   }
 
   /* ---------------- wiring ---------------- */
+  /** The handout never navigates, so applyPart() never fires there and every
+      page would print in the default accent. Stamp it on each section. */
+  function stampPrintAccents() {
+    document.querySelectorAll('.slides section[data-part]').forEach((sec) => {
+      const p = partById(sec.dataset.part);
+      sec.style.setProperty('--accent', p.accent);
+      sec.style.setProperty('--accent-2', p.accent2);
+    });
+  }
+
   function init() {
+    if (/print-pdf/.test(window.location.search)) stampPrintAccents();
     buildIndex();
     buildRail();
     const palette = initPalette();
@@ -302,17 +338,21 @@ window.DeckChrome = (function () {
       const c = current();
       applyPart(c.part);
       syncRail(c);
+      // interactive slides always start from a clean state -- re-arm before
+      // the hint is drawn, or it would still advertise the previous visit
+      spent.delete(c.el);
       syncHint(c);
       annotate.setSlide(c.h, c.v);
       DeckCode.syncSteps(c.el);
-      // interactive slides always start from a clean state
       const w = DeckWidgets.forSection(c.el);
       if (w) w.reset();
     }
 
     Reveal.on('slidechanged', onSlide);
-    Reveal.on('fragmentshown', (e) => DeckCode.syncSteps(e.fragment.closest('section')));
-    Reveal.on('fragmenthidden', (e) => DeckCode.syncSteps(e.fragment.closest('section')));
+    // the hint says "builds the slide" until the last fragment is in
+    const onFragment = (e) => { DeckCode.syncSteps(e.fragment.closest('section')); syncHint(current()); };
+    Reveal.on('fragmentshown', onFragment);
+    Reveal.on('fragmenthidden', onFragment);
     Reveal.on('ready', onSlide);
     onSlide();
 
@@ -327,6 +367,26 @@ window.DeckChrome = (function () {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { palette.open(); e.preventDefault(); return; }
       if (e.ctrlKey || e.metaKey || e.altKey) return;
 
+      const sec = current().el;
+      const widget = DeckWidgets.forSection(sec);
+      if (widget && !palette.isOpen() && !help.isOpen() && !Reveal.isOverview()) {
+        // fragments come first: a panel runs once the slide is fully built
+        const pending = sec.querySelector('.fragment:not(.visible)');
+        if (NEXT_KEYS.indexOf(e.key) >= 0 && !pending && armed(sec)) {
+          // a run() that was busy and did nothing returns false: don't count it
+          if (widget.run() !== false) spent.set(sec, (spent.get(sec) || 0) + 1);
+          syncHint(current());
+          e.preventDefault(); e.stopPropagation(); return;
+        }
+        // back on a spent panel rewinds the panel, not the deck
+        if (PREV_KEYS.indexOf(e.key) >= 0 && (spent.get(sec) || 0) > 0) {
+          spent.set(sec, 0);
+          widget.reset();
+          syncHint(current());
+          e.preventDefault(); e.stopPropagation(); return;
+        }
+      }
+
       switch (e.key) {
         case '/':
           palette.open(); e.preventDefault(); break;
@@ -337,13 +397,20 @@ window.DeckChrome = (function () {
         case 'c': case 'C':
           annotate.clear(); e.preventDefault(); break;
         case 'b': case 'B': {
-          const w = DeckWidgets.forSection(current().el);
-          if (w) { w.run(); e.preventDefault(); }
+          if (widget) {
+            if (widget.run() !== false) spent.set(sec, (spent.get(sec) || 0) + 1);
+            syncHint(current());
+            e.preventDefault();
+          }
           break;
         }
         case 'r': case 'R': {
-          const w = DeckWidgets.forSection(current().el);
-          if (w) { w.reset(); e.preventDefault(); }
+          if (widget) {
+            spent.set(sec, 0);
+            widget.reset();
+            syncHint(current());
+            e.preventDefault();
+          }
           break;
         }
       }

@@ -6,12 +6,49 @@ Four patterns beyond the `pipeline` and `calc` widgets that ship in
 a `js/my-widgets.js` loaded **before** `chrome.js`, and the markup on the
 slide.
 
-All four follow [the widget contract](../SKILL.md#the-widget-contract):
-`{ run, reset }`, <kbd>B</kbd>/<kbd>R</kbd>, reset on slide entry.
+All four follow the widget contract below.
 
 Helpers available: `DeckWidgets.helpers.{ nf, $, $$ }` — `nf` is
 thousands-separator formatting, `$(root, role)` is
 `root.querySelector('[data-role="..."]')`.
+
+---
+
+## The widget contract
+
+Every widget registers `{ run, reset }` for its slide, plus optional
+`showAll` and `steps`.
+
+- **<kbd>B</kbd> runs, <kbd>R</kbd> resets.** Non-negotiable: a panel you can
+  only drive with a mouse is a panel you fumble on stage.
+- **The presenter remote drives it too.** On a slide that owns a widget, the
+  first *next* press runs it and the following one advances; *back* on a
+  panel that already ran rewinds the panel, not the deck. Pending fragments
+  go first. A widget that needs several presses (one per frame, one per
+  slider step) registers `steps: n`.
+- **Entering a slide always calls `reset()`.** A second pass through the deck
+  must behave like the first. Never rely on state surviving navigation.
+- **`run()` must be idempotent.** Guard animations with a `busy` flag or a
+  clicker double-tap desyncs the panel.
+- **`showAll()` is the finished state, at once, no animation.** Under
+  `?print-pdf` it replaces `run` and `reset`, so the handout shows the result
+  instead of an empty panel. Wire it to a **Show all** button as well: it is
+  the way out when a panel misbehaves on stage. With it, a widget needs no
+  duplicate static slide. `pipeline` and `wire` ship one; `calc` exports
+  its initial value, which is usually fine; `ide`, `layers` and `race` do
+  not have one yet — add it when you use them in a handout.
+- Register your own in a separate file loaded *before* `chrome.js`:
+
+```js
+DeckWidgets.register('myThing', function (el) {
+  const section = el.closest('section');
+  function run()     { /* ... */ }
+  function reset()   { /* ... */ }
+  function showAll() { /* ... */ }
+  reset();
+  DeckWidgets.own(section, { run, reset, showAll });
+});
+```
 
 ---
 
@@ -449,8 +486,10 @@ response.
 
 **Nothing about your protocol is in the JS.** Frames are
 `<script type="text/template">` in document order, with `data-dir`
-(`out` = you to them, `in` = them to you), `data-method` and an optional
-`data-note`. Reordering the conversation, or swapping in a different protocol
+(`out` = you to them, `in` = them to you, `human` = a beat where a person, not
+the system, acts — "the next morning, a developer opens the thread"),
+`data-method` and an optional `data-note`. A `human` frame is often the
+payoff: it is where the audience sees what the exchange saved someone. Reordering the conversation, or swapping in a different protocol
 entirely, is a markup edit.
 
 ### Markup
@@ -519,6 +558,7 @@ DeckWidgets.register('wire', function (el) {
 
   let at = 0;
   let busy = false;
+  let instant = false;   // showAll(): no typing, for the handout
 
   function reset() {
     busy = false;
@@ -529,7 +569,7 @@ DeckWidgets.register('wire', function (el) {
   }
 
   function run() {
-    if (busy || at >= frames.length) return;     // past the end is a no-op
+    if (busy || at >= frames.length) return false;   // nothing ran: don't count the press
     busy = true;
     const f = frames[at++];
 
@@ -540,7 +580,8 @@ DeckWidgets.register('wire', function (el) {
     box.className = 'frame ' + f.dir;
     box.innerHTML =
       '<div class="hdr">'
-      + '<span class="dir">' + (f.dir === 'out' ? '→ request' : '← response') + '</span>'
+      + '<span class="dir">' + (f.dir === 'out' ? '→ request'
+        : f.dir === 'human' ? '· meanwhile' : '← response') + '</span>'
       + '<span class="method">' + f.method + '</span>'
       + (f.note ? '<span class="note">' + f.note + '</span>' : '')
       + '</div><div class="codelines"></div>';
@@ -548,7 +589,7 @@ DeckWidgets.register('wire', function (el) {
 
     if (counter) counter.textContent = at + '/' + frames.length;
 
-    DeckCode.paint(box.querySelector('.codelines'), f.body, 'json', { stagger })
+    DeckCode.paint(box.querySelector('.codelines'), f.body, 'json', instant ? {} : { stagger })
       .then(() => { log.scrollTop = log.scrollHeight; busy = false; });
     log.scrollTop = log.scrollHeight;   // and as it types, not only when done
   }
@@ -558,8 +599,16 @@ DeckWidgets.register('wire', function (el) {
   const resetBtn = $(section, 'reset');
   if (resetBtn) resetBtn.addEventListener('click', reset);
 
+  function showAll() {
+    reset();
+    instant = true;
+    while (at < frames.length) { busy = false; run(); }
+    instant = false;
+  }
+
   reset();
-  DeckWidgets.own(section, { run, reset });
+  // steps: the clicker spends one press per frame before it leaves the slide
+  DeckWidgets.own(section, { run, reset, showAll, steps: frames.length });
 });
 ```
 

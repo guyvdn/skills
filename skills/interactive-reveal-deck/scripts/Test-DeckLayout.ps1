@@ -48,6 +48,51 @@ if (-not (Get-Command agent-browser -ErrorAction SilentlyContinue)) {
     exit 2
 }
 
+$abExe = Get-Command agent-browser -All -ErrorAction SilentlyContinue |
+    Where-Object { $_.CommandType -eq 'Application' } | Select-Object -First 1
+
+# Every agent-browser call gets a hard timeout, so a call that blocks cannot
+# take the whole script with it -- without this, the 90s readiness budget below
+# is only a budget if each eval returns. Returns stdout lines, or $null on a
+# timeout (the stuck call is killed).
+#
+# NOTE for callers capturing this script's output through a pipe (an agent's
+# shell tool, `| Select -Last N`): `agent-browser open` leaves its daemon
+# running, and the daemon inherits the pipe, so the CALLER can wait forever
+# after this script has already printed its result and exited. Redirect to a
+# file instead (Start-Process -RedirectStandardOutput) and read it back.
+function Invoke-AgentBrowser {
+    param([string[]]$ArgumentList, [int]$TimeoutSec = 20)
+    # An npm install resolves to agent-browser.cmd, and cmd.exe cuts an
+    # argument at its first newline -- the multi-line slide walk arrived as
+    # its first line and the eval never returned. Base64 has no newlines,
+    # quotes or cmd metacharacters, so send every eval payload that way.
+    if ($ArgumentList.Count -eq 2 -and $ArgumentList[0] -eq 'eval') {
+        $ArgumentList = 'eval', '-b',
+            [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($ArgumentList[1]))
+    }
+    if (-not $abExe) { return (& agent-browser @ArgumentList 2>$null) }
+    $out = [IO.Path]::GetTempFileName()
+    $err = [IO.Path]::GetTempFileName()
+    try {
+        # Start-Process joins arguments with spaces and does not quote them, so
+        # quote each one ourselves (the eval payload is a whole script).
+        $quoted = $ArgumentList | ForEach-Object { '"' + ($_ -replace '(\\*)"', '$1$1\"') + '"' }
+        $p = Start-Process -FilePath $abExe.Source -ArgumentList $quoted -PassThru `
+            -NoNewWindow -RedirectStandardOutput $out -RedirectStandardError $err
+        if (-not $p.WaitForExit($TimeoutSec * 1000)) {
+            # /T: the process is cmd.exe running the .cmd shim, and the real
+            # agent-browser is its child -- Stop-Process would leave it running
+            & taskkill.exe /T /F /PID $p.Id 2>&1 | Out-Null
+            return $null
+        }
+        # 5.1 reads ANSI by default; slide titles can be non-ASCII
+        return Get-Content $out -Encoding UTF8
+    } finally {
+        Remove-Item $out, $err -ErrorAction SilentlyContinue
+    }
+}
+
 $server = $null
 try {
     if ($PSCmdlet.ParameterSetName -eq 'Path') {
@@ -133,11 +178,11 @@ try {
     $ready = $false
     for ($i = 1; $i -le $budget; $i++) {
         Start-Sleep -Milliseconds 750
-        $answer = (& agent-browser eval $probe 2>$null | Select-Object -Last 1)
+        $answer = (Invoke-AgentBrowser 'eval', $probe -TimeoutSec 10 | Select-Object -Last 1)
         if ($answer -and $answer -match 'true') { $ready = $true; break }
 
         if ($abApp -and $i % 12 -eq 0) {
-            $here = (& agent-browser get url 2>$null | Select-Object -Last 1)
+            $here = (Invoke-AgentBrowser 'get', 'url' -TimeoutSec 10 | Select-Object -Last 1)
             if ($here -and $here -notmatch [regex]::Escape($Url)) {
                 Write-Host "  browser is up but on $here - re-issuing the open" -ForegroundColor DarkGray
                 if ($opener -and -not $opener.HasExited) {
@@ -175,7 +220,8 @@ try {
   for (const [h, v] of index) {
     Reveal.slide(h, v);
     await new Promise(r => setTimeout(r, 110));
-    while (Reveal.availableFragments().next) Reveal.nextFragment();
+    // capped: a fragment that never advances must not spin the page forever
+    for (let n = 0; n < 200 && Reveal.availableFragments().next; n++) Reveal.nextFragment();
     await new Promise(r => setTimeout(r, 60));
     const all = document.querySelectorAll('section.present');
     const s = all[all.length - 1];
@@ -192,8 +238,12 @@ try {
 })()
 '@
 
-    $raw = agent-browser eval $js
-    if (-not $KeepBrowser) { agent-browser close | Out-Null }
+    $raw = Invoke-AgentBrowser 'eval', $js -TimeoutSec 180
+    if (-not $KeepBrowser) { Invoke-AgentBrowser 'close' -TimeoutSec 15 | Out-Null }
+    if (-not $raw) {
+        Write-Error 'The slide walk did not return within 180s (agent-browser eval hung or failed).'
+        exit 2
+    }
 
     # eval returns the JSON string, itself JSON-quoted
     $json = $raw | Select-Object -Last 1

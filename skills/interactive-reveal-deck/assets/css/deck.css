@@ -305,6 +305,7 @@ html, body { background: var(--bg); }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
 .stack { display: flex; flex-direction: column; gap: 14px; }
+.reveal .grid-2 + .rows, .reveal .grid-3 + .rows { margin-top: 22px; }
 
 /* --- cards -------------------------------------------------------------- */
 .card {
@@ -771,14 +772,15 @@ kbd {
 
 /* --- print / PDF export ------------------------------------------------ */
 @media print {
-  #rail, #context, #annotate, #draw-badge, .overlay { display: none !important; }
+  #rail, #context, #annotate, #draw-badge, .overlay, .toolbar { display: none !important; }
 }
 /* ?print-pdf renders on screen, so the print media query never fires there */
 html.print-pdf #rail,
 html.print-pdf #context,
 html.print-pdf #annotate,
 html.print-pdf #draw-badge,
-html.print-pdf .overlay { display: none !important; }
+html.print-pdf .overlay,
+html.print-pdf .toolbar { display: none !important; }
 
 /* --- responsiveness of the chrome on small screens -------------------- */
 @media screen and (max-width: 800px) {

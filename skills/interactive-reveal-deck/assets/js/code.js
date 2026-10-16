@@ -31,7 +31,9 @@ window.DeckCode = (function () {
     'params partial private protected public readonly record ref required return sbyte ' +
     'sealed set short sizeof stackalloc static string struct switch this throw true try ' +
     'typeof uint ulong unchecked unsafe ushort using value var virtual void volatile ' +
-    'when where while with yield'
+    'when where while with yield' +
+    // contextual keywords from C# 14 / 15
+    ' closed extension field union'
   ).split(' '));
 
   // One pass, ordered by precedence. Named groups keep the branches readable.
@@ -177,7 +179,42 @@ window.DeckCode = (function () {
     return out;
   }
 
+  /* ---------------- YAML ----------------
+     Line-based: a comment is a # at the start or after whitespace, outside
+     quotes; a key is the leading `name:` (after indentation or a list dash).
+     Good enough for config excerpts; no block scalars or anchors. */
+  function yaml(src) {
+    return src.split('\n').map((line) => {
+      // find the comment start, skipping anything inside quotes
+      let q = null, cut = line.length;
+      for (let k = 0; k < line.length; k++) {
+        const ch = line[k];
+        if (q) { if (ch === q) q = null; continue; }
+        if (ch === '"' || ch === "'") { q = ch; continue; }
+        if (ch === '#' && (k === 0 || /\s/.test(line[k - 1]))) { cut = k; break; }
+      }
+      let code = line.slice(0, cut);
+      const com = line.slice(cut);
+      let out = '';
+      const key = code.match(/^(\s*(?:-\s+)?)([A-Za-z_][\w.-]*)(:)/);
+      if (key) {
+        out = esc(key[1]) + `<span class="tok-a">${esc(key[2])}</span><span class="tok-p">:</span>`;
+        code = code.slice(key[0].length);
+      }
+      // strings first; bools and numbers only in the text between them
+      out += code.split(/("[^"]*"|'[^']*')/).map((part, n) => n % 2
+        ? `<span class="tok-s">${esc(part)}</span>`
+        : esc(part)
+            .replace(/^(\s*)(true|false|null)\b/, '$1<span class="tok-k">$2</span>')
+            .replace(/^(\s*)(\d[\d_.]*)\b/, '$1<span class="tok-n">$2</span>')
+      ).join('');
+      if (com) out += `<span class="tok-c">${esc(com)}</span>`;
+      return out;
+    }).join('\n');
+  }
+
   const LANGS = {
+    yaml: yaml,
     csharp: csharp,
     json: json,
     js: javascript,

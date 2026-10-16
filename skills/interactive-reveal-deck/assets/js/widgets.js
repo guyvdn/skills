@@ -3,24 +3,35 @@
    widgets that work straight out of the box.
 
    THE CONTRACT. Every widget registers { run, reset } for its slide:
-     * B runs it, R resets it, so a panel is driveable from a clicker with no
-       mouse and no pointing at the screen.
+     * B runs it, R resets it -- and so does the presenter remote: on a slide
+       that owns a widget the first "next" press runs it and the next one
+       advances, so a panel needs no keyboard and no pointing at the screen.
+       A widget that wants more than one press before the deck moves on adds
+       `steps: <n>` (or a function returning one) to the object it registers.
      * Entering the slide always calls reset(), so a second pass through the
        deck behaves exactly like the first. Never rely on a widget's state
        surviving navigation.
      * A widget must be idempotent under repeated run(): guard with a `busy`
-       flag if it animates, or a fast clicker double-tap desyncs it.
+       flag if it animates, or a fast clicker double-tap desyncs it. Return
+       false from a run() that did nothing, so the press is not counted
+       against `steps`.
+     * Optional showAll(): the finished state at once, no animation. Under
+       ?print-pdf it replaces run and reset, so the handout shows the result
+       instead of an empty panel -- no duplicate static slide needed. Wire it
+       to a "Show all" button too: it is the way out when a panel misbehaves
+       on stage.
 
    TO ADD YOUR OWN, in a separate file loaded after this one:
      DeckWidgets.register('myThing', function (el) {
        const section = el.closest('section');
-       function run()   { ... }
-       function reset() { ... }
+       function run()     { ... }
+       function reset()   { ... }
+       function showAll() { ... }
        reset();
-       DeckWidgets.own(section, { run, reset });
+       DeckWidgets.own(section, { run, reset, showAll });
      });
    then put <div data-widget="myThing"> on the slide. See
-   references/widget-recipes.md for three more worked patterns.
+   references/widget-recipes.md for four more worked patterns.
    ========================================================================== */
 window.DeckWidgets = (function () {
   'use strict';
@@ -80,10 +91,14 @@ window.DeckWidgets = (function () {
     let kind = (bar && bar.querySelector('[data-kind][aria-selected="true"]')?.dataset.kind)
       || Object.keys(src)[0] || 'default';
     let busy = false;
+    let timer = null;
+    let gen = 0;    // bumped on every reset/showAll, so a stale build cannot land
 
     const paintInput = () => DeckCode.paint(inCode, (src[kind] || {}).in || '', langIn);
 
     function reset() {
+      clearTimeout(timer);
+      gen++;
       busy = false;
       el.classList.remove('running');
       out.classList.remove('done');
@@ -97,16 +112,18 @@ window.DeckWidgets = (function () {
     }
 
     function run() {
-      if (busy) return;
+      if (busy) return false;
       busy = true;
+      const mine = gen;
       el.classList.add('running');
       out.classList.remove('done');
       outCode.innerHTML = '';
       if (stats) stats.classList.remove('in');
-      setTimeout(() => {
+      timer = setTimeout(() => {
         el.classList.remove('running');
         out.classList.add('done');
         DeckCode.paint(outCode, (src[kind] || {}).out || '', langOut, { stagger }).then((n) => {
+          if (mine !== gen) return;
           if (stats) {
             const c = $(stats, 'stat-lines');
             if (c) c.textContent = nf(n);
@@ -115,6 +132,22 @@ window.DeckWidgets = (function () {
           busy = false;
         });
       }, delay);
+    }
+
+    function showAll() {
+      clearTimeout(timer);
+      const mine = ++gen;
+      busy = false;
+      el.classList.remove('running');
+      out.classList.add('done');
+      DeckCode.paint(outCode, (src[kind] || {}).out || '', langOut).then((n) => {
+        if (mine !== gen) return;
+        if (stats) {
+          const c = $(stats, 'stat-lines');
+          if (c) c.textContent = nf(n);
+          stats.classList.add('in');
+        }
+      });
     }
 
     if (bar) {
@@ -127,11 +160,12 @@ window.DeckWidgets = (function () {
         });
       });
       const b = $(bar, 'build'); if (b) b.addEventListener('click', run);
+      const a = $(bar, 'all'); if (a) a.addEventListener('click', showAll);
       const r = $(bar, 'reset'); if (r) r.addEventListener('click', reset);
     }
 
     reset();
-    registry.set(section, { run, reset });
+    registry.set(section, { run, reset, showAll });
   }
 
   /* ======================================================================
@@ -215,6 +249,15 @@ window.DeckWidgets = (function () {
       const b = BUILDERS[el.dataset.widget];
       if (b) b(el);
     });
+    // the handout must not export empty panels: finish each one and pin it,
+    // so the reset() DeckChrome calls on slide entry cannot clear it again
+    if (/print-pdf/.test(window.location.search)) {
+      registry.forEach((api, section) => {
+        if (typeof api.showAll !== 'function') return;
+        api.showAll();
+        registry.set(section, { run: api.showAll, reset: api.showAll });
+      });
+    }
   }
 
   return {
