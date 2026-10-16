@@ -145,3 +145,14 @@ powershell -ExecutionPolicy Bypass -File skills/interactive-reveal-deck/scripts/
 # ...as JSON, for a script or an agent to consume
 powershell -ExecutionPolicy Bypass -File skills/claude-code-sessions/scripts/Get-ClaudeSessions.ps1 -Json
 ```
+
+## Contributing
+
+The JavaScript the skills ship is linted with ESLint; CI runs it on every push and PR that touches JS, together with the `ha-wall-dashboard` tests. Run the same locally from the repo root:
+
+```bash
+npm ci
+npm run lint
+```
+
+The root `package.json` is repo tooling only — `npx skills add` installs skill folders, so none of it reaches an installed skill. A skill that adds browser globals or a new folder of scripts gets its own block in `eslint.config.mjs`.

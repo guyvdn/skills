@@ -1,0 +1,26 @@
+# Lints the JavaScript the skills ship, and runs the tests that ship with it.
+name: lint
+
+on:
+  push:
+    branches: [master]
+    paths: ['**/*.js', '**/*.mjs', 'eslint.config.mjs', 'package.json', 'package-lock.json', '.github/workflows/lint.yml']
+  pull_request:
+    paths: ['**/*.js', '**/*.mjs', 'eslint.config.mjs', 'package.json', 'package-lock.json', '.github/workflows/lint.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - name: ha-wall-dashboard tests
+        run: node --test skills/ha-wall-dashboard/assets/starter/tests/*.test.mjs

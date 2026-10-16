@@ -58,7 +58,7 @@ export function connectLive({
   function dropSocket() {
     const dead = socket;
     dead.onclose = dead.onmessage = dead.onerror = null;
-    try { dead.close(); } catch {}
+    try { dead.close(); } catch { /* closing a dead socket can throw; nothing to do */ }
     lost();
   }
 
@@ -76,7 +76,7 @@ export function connectLive({
     socket = new WebSocketImpl(wsUrl);
     socket.onmessage = (ev) => handle(JSON.parse(ev.data));
     socket.onclose = lost;
-    socket.onerror = () => { try { socket.close(); } catch {} };
+    socket.onerror = () => { try { socket.close(); } catch { /* closing a dead socket can throw; nothing to do */ } };
   }
 
   function handle(msg) {
@@ -139,7 +139,7 @@ export function connectLive({
   function close() {
     closed = true;
     stopHeartbeat();
-    try { socket?.close(); } catch {}
+    try { socket?.close(); } catch { /* closing a dead socket can throw; nothing to do */ }
   }
 
   open();

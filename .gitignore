@@ -19,3 +19,7 @@ __pycache__/
 
 # Generated templates, covers and previews. Regenerate with make_template.py.
 out/
+
+# Repo tooling (eslint). Skills that ship their own package.json keep
+# their node_modules out of git through their own .gitignore.
+node_modules/
