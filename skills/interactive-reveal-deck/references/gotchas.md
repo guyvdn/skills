@@ -47,6 +47,12 @@ The file then fails to parse tens of lines later, pointing at innocent code.
 `pwsh` 7 assumes UTF-8 and shows none of this, so `[Parser]::ParseFile` under
 7 is not a check that 5.1 will load it.
 
+The same goes for the **files the scripts read**: `Get-Content` in 5.1
+decodes the BOM-less `index.html` template as Windows-1252 too, so the
+scaffold wrote mojibake and missed its title marker. Read and write them with
+`[IO.File]::ReadAllText` / `WriteAllText` and an explicit `UTF8Encoding`, and
+test a script change under `powershell`, not `pwsh`.
+
 **Don't pipe `Test-DeckLayout.ps1` from an agent's shell tool.** With
 `| Select -Last 40` the agent-browser daemon outlives the script and keeps the
 pipe open, so the tool call hangs long after the result is in, and because

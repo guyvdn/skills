@@ -107,7 +107,11 @@ foreach ($dir in 'css', 'js') {
 # Plain string replacement against the known template markers: less to go
 # wrong than regexing HTML, and it fails loudly (below) if a marker moved.
 $indexPath = Join-Path $Path 'index.html'
-$html = Get-Content $indexPath -Raw
+# Read and write as UTF-8 explicitly: Windows PowerShell 5.1 decodes a
+# BOM-less file as the ANSI code page, which turns the template's em dashes
+# into mojibake and makes the markers below miss.
+$utf8 = New-Object System.Text.UTF8Encoding($false)
+$html = [System.IO.File]::ReadAllText($indexPath, $utf8)
 
 $markers = @(
     @{ From = '<title>DECK TITLE — subtitle</title>';            To = "<title>$Title</title>" },
@@ -164,13 +168,13 @@ if ($templateIds.Count -gt $partObjects.Count) {
     Write-Warning "The template has more parts than you supplied. Slides still using data-part=$unmapped fall back to the first part - reassign or delete them."
 }
 
-Set-Content -Path $indexPath -Value $html -NoNewline -Encoding UTF8
+[System.IO.File]::WriteAllText($indexPath, $html, $utf8)
 
 # --- package.json port ----------------------------------------------------
 if ($Port -ne 8081) {
     $pkgPath = Join-Path $Path 'package.json'
-    (Get-Content $pkgPath -Raw).Replace('-p 8081', "-p $Port") |
-        Set-Content -Path $pkgPath -NoNewline -Encoding UTF8
+    $pkg = [System.IO.File]::ReadAllText($pkgPath, $utf8).Replace('-p 8081', "-p $Port")
+    [System.IO.File]::WriteAllText($pkgPath, $pkg, $utf8)
 }
 
 # --- start script, next to the deck --------------------------------------
