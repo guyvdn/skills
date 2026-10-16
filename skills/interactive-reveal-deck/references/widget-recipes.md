@@ -34,9 +34,8 @@ Every widget registers `{ run, reset }` for its slide, plus optional
   `?print-pdf` it replaces `run` and `reset`, so the handout shows the result
   instead of an empty panel. Wire it to a **Show all** button as well: it is
   the way out when a panel misbehaves on stage. With it, a widget needs no
-  duplicate static slide. `pipeline` and `wire` ship one; `calc` exports
-  its initial value, which is usually fine; `ide`, `layers` and `race` do
-  not have one yet — add it when you use them in a handout.
+  duplicate static slide. `pipeline` and every recipe below ship one;
+  `calc` exports its initial slider value.
 - Register your own in a separate file loaded *before* `chrome.js`:
 
 ```js
@@ -175,22 +174,27 @@ DeckWidgets.register('ide', function (el) {
     menu.querySelectorAll('button').forEach((b) => b.addEventListener('click', applyFix));
   }
 
-  function applyFix(ev) {
-    if (ev) ev.stopPropagation();
+  // the fixed state with no flash: what showAll() and the PDF handout show
+  function showAll() {
     closeMenu();
     fixApplied = true;
     paint(GOOD);
+    errors.classList.add('clean');
+    errors.innerHTML = '<span class="sev">✓ 0 errors</span><span>' + ERR_OK + '</span>';
+    build.classList.add('green');
+    $(build, 'build-icon').innerHTML = '✓';
+    $(build, 'build-text').textContent = 'Build succeeded';
+  }
+
+  function applyFix(ev) {
+    if (ev) ev.stopPropagation();
+    showAll();
     const src = editor.querySelector(`.row[data-line="${BAD_LINE}"] .src`);
     if (src) {                                  // brief green flash on the fixed line
       src.style.transition = 'background .6s ease';
       src.style.background = 'color-mix(in oklab, var(--ok) 22%, transparent)';
       setTimeout(() => { src.style.background = 'transparent'; }, 700);
     }
-    errors.classList.add('clean');
-    errors.innerHTML = '<span class="sev">✓ 0 errors</span><span>' + ERR_OK + '</span>';
-    build.classList.add('green');
-    $(build, 'build-icon').innerHTML = '✓';
-    $(build, 'build-text').textContent = 'Build succeeded';
   }
 
   function reset() {
@@ -209,7 +213,7 @@ DeckWidgets.register('ide', function (el) {
   if (r) r.addEventListener('click', reset);
   reset();
   // B toggles, so the clicker can show it and put it back
-  DeckWidgets.own(section, { run: () => (fixApplied ? reset() : applyFix()), reset });
+  DeckWidgets.own(section, { run: () => (fixApplied ? reset() : applyFix()), reset, showAll });
 });
 ```
 
@@ -311,10 +315,23 @@ DeckWidgets.register('layers', function (el) {
     });
   }
 
+  // every verdict at once, the token stuck at the first blocking layer
+  function showAll() {
+    reset();
+    token.style.opacity = '1';
+    for (const layer of layers) {
+      layer.classList.add('tested', layer.dataset.outcome);
+      token.style.top = (layer.offsetTop + layer.offsetHeight / 2 - 17) + 'px';
+      if (layer.dataset.outcome === 'block') { token.classList.add('stuck'); break; }
+    }
+  }
+
   $(section, 'run').addEventListener('click', run);
   $(section, 'reset').addEventListener('click', reset);
-  requestAnimationFrame(reset);
-  DeckWidgets.own(section, { run, reset });
+  // through the registry, not reset() directly: under ?print-pdf the framework
+  // swaps in showAll, and a direct call would empty the panel again
+  requestAnimationFrame(() => DeckWidgets.forSection(section).reset());
+  DeckWidgets.own(section, { run, reset, showAll });
 });
 ```
 
@@ -453,10 +470,21 @@ DeckWidgets.register('race', function (el) {
     })(t0);
   }
 
+  // both lanes finished, final numbers showing
+  function showAll() {
+    reset();
+    Object.keys(RACE).forEach((k) => {
+      paintLane(k, 1);
+      lanes[k].classList.add('finished');
+      $(lanes[k], 'done').textContent =
+        `${nf(RACE[k].ms)} ms · ${nf(RACE[k].allocs)} allocations`;
+    });
+  }
+
   $(section, 'run').addEventListener('click', run);
   $(section, 'reset').addEventListener('click', reset);
   reset();
-  DeckWidgets.own(section, { run, reset });
+  DeckWidgets.own(section, { run, reset, showAll });
 });
 ```
 
