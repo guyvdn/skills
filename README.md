@@ -19,6 +19,7 @@ npx skills add guyvdn/skills
 | [windows-dev-drive](skills/windows-dev-drive/) | Set up, audit and tune a Windows Dev Drive — ReFS/VHDX creation, trust, Microsoft Defender performance mode, filter allow lists, redirecting NuGet/npm/pnpm/pip/uv/cargo/Gradle/Maven package caches onto it, and moving existing repos onto it. |
 | [windows-display-dimming](skills/windows-display-dimming/) | Diagnose and stop a laptop screen dimming by itself — ambient-light adaptive brightness, content-adaptive dimming (Intel DPST / AMD Vari-Bright / CABC), battery-saver dimming, plus a boot task so the fix survives Windows feature updates. |
 | [windows-printer-duplicates](skills/windows-printer-duplicates/) | Sort out a printer that appears twice in Windows — rescue the jobs stranded on the dead WSD queue by repointing its port instead of editing spool files, work out which of the two queues to keep, remove the duplicate and its orphaned port, and stop the default printer drifting back. |
+| [windows-crash-dump](skills/windows-crash-dump/) | Work out why Windows crashed — bugcheck, hardware and update events without admin, getting the admin-only dump out with one UAC prompt, `!analyze -v` with the cdb that ships inside the WinDbg package, and reading the stack to tell a driver crash from a Windows bug, a hardware fault or a power loss. |
 | [agent-browser-cleanup](skills/agent-browser-cleanup/) | Get `agent-browser` launching again when every command dies with "Chrome exited early (exit code: 0)", and remove the Chrome trees it leaks (hundreds of processes, gigabytes of RAM) — covers the elevated-shell cause that reinstalls and Defender exclusions cannot fix, why `close --all` misses the leak, and why "parent is dead" is the wrong orphan test. |
 | [reveal-md](skills/reveal-md/) | Create, run, and export reveal-md presentations. Use when the user wants to create a new slide deck, serve a presentation locally, or export one to PDF. |
 | [interactive-reveal-deck](skills/interactive-reveal-deck/) | Build a presentation as a reveal.js deck with a designed interface and interactive demo panels instead of static bullets — per-part accent colours, a chapter rail, a jump-to-slide palette, an annotation layer, and widgets the presenter drives from the clicker. Ships the theme, the code-window tokenizer (C#, JSON, TS, YAML), six widget patterns, a scaffold script and a layout verifier, plus guidance on story, audience, slide budget and cutting repetition, drawn from the rework real decks needed. |
@@ -43,6 +44,8 @@ After installing, ask your AI agent:
 - *"Which of these two printer entries should I delete?"*
 - *"Why can't I see which printer is the default any more?"*
 - *"My default printer keeps changing by itself"*
+- *"My PC just crashed, can you find why?"*
+- *"I got a blue screen — which driver was it?"*
 - *"Something left hundreds of chrome.exe processes running"*
 - *"agent-browser said it closed everything but the browsers are still there"*
 - *"agent-browser can't launch Chrome — it says Chrome exited early without writing DevToolsActivePort"*
@@ -123,6 +126,12 @@ powershell -ExecutionPolicy Bypass -File skills/windows-printer-duplicates/scrip
 
 # ...as JSON, for a script or an agent to consume
 powershell -ExecutionPolicy Bypass -File skills/windows-printer-duplicates/scripts/Test-PrinterQueues.ps1 -Json
+
+# Crash report: bugchecks, WHEA errors, dumps, recent updates (read-only, no admin needed)
+powershell -ExecutionPolicy Bypass -File skills/windows-crash-dump/scripts/Get-CrashReport.ps1
+
+# ...plus !analyze -v of a dump copied out of C:\Windows (needs WinDbg: winget install Microsoft.WinDbg)
+powershell -ExecutionPolicy Bypass -File skills/windows-crash-dump/scripts/Get-CrashReport.ps1 -DumpPath $env:TEMP\crash.dmp
 
 # Display auto-dimming audit (read-only)
 powershell -ExecutionPolicy Bypass -File skills/windows-display-dimming/scripts/Test-DisplayDimming.ps1
