@@ -20,6 +20,7 @@ npx skills add guyvdn/skills
 | [windows-display-dimming](skills/windows-display-dimming/) | Diagnose and stop a laptop screen dimming by itself — ambient-light adaptive brightness, content-adaptive dimming (Intel DPST / AMD Vari-Bright / CABC), battery-saver dimming, plus a boot task so the fix survives Windows feature updates. |
 | [windows-printer-duplicates](skills/windows-printer-duplicates/) | Sort out a printer that appears twice in Windows — rescue the jobs stranded on the dead WSD queue by repointing its port instead of editing spool files, work out which of the two queues to keep, remove the duplicate and its orphaned port, and stop the default printer drifting back. |
 | [windows-crash-dump](skills/windows-crash-dump/) | Work out why Windows crashed — bugcheck, hardware and update events without admin, getting the admin-only dump out with one UAC prompt, `!analyze -v` with the cdb that ships inside the WinDbg package, and reading the stack to tell a driver crash from a Windows bug, a hardware fault or a power loss. |
+| [windows-everything-search](skills/windows-everything-search/) | Get voidtools Everything fast again on a developer PC — audit and fix Match Path, millions of `node_modules`/`.git`/`bin`/`obj` and package-cache entries, and subst drives indexed twice; edits `Everything.ini` safely (closed first, CRLF and doubled backslashes kept, backed up), then proves it by the database size before and after. |
 | [agent-browser-cleanup](skills/agent-browser-cleanup/) | Get `agent-browser` launching again when every command dies with "Chrome exited early (exit code: 0)", and remove the Chrome trees it leaks (hundreds of processes, gigabytes of RAM) — covers the elevated-shell cause that reinstalls and Defender exclusions cannot fix, why `close --all` misses the leak, and why "parent is dead" is the wrong orphan test. |
 | [reveal-md](skills/reveal-md/) | Create, run, and export reveal-md presentations. Use when the user wants to create a new slide deck, serve a presentation locally, or export one to PDF. |
 | [interactive-reveal-deck](skills/interactive-reveal-deck/) | Build a presentation as a reveal.js deck with a designed interface and interactive demo panels instead of static bullets — per-part accent colours, a chapter rail, a jump-to-slide palette, an annotation layer, and widgets the presenter drives from the clicker. Ships the theme, the code-window tokenizer (C#, JSON, TS, YAML), six widget patterns, a scaffold script and a layout verifier, plus guidance on story, audience, slide budget and cutting repetition, drawn from the rework real decks needed. |
@@ -46,6 +47,8 @@ After installing, ask your AI agent:
 - *"My default printer keeps changing by itself"*
 - *"My PC just crashed, can you find why?"*
 - *"I got a blue screen — which driver was it?"*
+- *"Everything has become really slow, can you investigate?"*
+- *"Tune Everything's index on this PC"*
 - *"Something left hundreds of chrome.exe processes running"*
 - *"agent-browser said it closed everything but the browsers are still there"*
 - *"agent-browser can't launch Chrome — it says Chrome exited early without writing DevToolsActivePort"*
