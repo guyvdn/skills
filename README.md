@@ -25,6 +25,7 @@ npx skills add guyvdn/skills
 | [reveal-md](skills/reveal-md/) | Create, run, and export reveal-md presentations. Use when the user wants to create a new slide deck, serve a presentation locally, or export one to PDF. |
 | [interactive-reveal-deck](skills/interactive-reveal-deck/) | Build a presentation as a reveal.js deck with a designed interface and interactive demo panels instead of static bullets — per-part accent colours, a chapter rail, a jump-to-slide palette, an annotation layer, and widgets the presenter drives from the clicker. Ships the theme, the code-window tokenizer (C#, JSON, TS, YAML), six widget patterns, a scaffold script and a layout verifier, plus guidance on story, audience, slide budget and cutting repetition, drawn from the rework real decks needed. |
 | [claude-code-sessions](skills/claude-code-sessions/) | Identify the Claude Code sessions running on this machine — map each one's friendly name to its session id, working directory and pid. Covers why the name is the address and the id usually is not, and why a live pid alone is not a live session. |
+| [t3-code-provider-failures](skills/t3-code-provider-failures/) | Fix T3 Code's "Provider turn failed" and Claude threads that never answer — read T3's provider and server logs to see which Claude Code executable a thread actually ran, remove the stale npm install it falls back to while the native `claude.exe` is mid-update, and get past `npm uninstall -g` reporting "up to date" when the copy sits under a pre-nvm prefix. |
 | [remarkable](skills/remarkable/) | Read, transcribe and summarize handwritten notebooks from a reMarkable tablet — lists the tablet over USB (10.11.99.1) or the cloud (rmapi), exports a notebook to PDF, rasterises the pages for vision OCR, and writes a transcript plus a summary of decisions, actions and unanswered questions. Includes the transcription honesty rules and why a VPN makes a plugged-in tablet unreachable. |
 | [ha-wall-dashboard](skills/ha-wall-dashboard/) | Build and maintain a Home Assistant wall-tablet dashboard — a themeable vanilla-JS web app served from HA's own `www` folder, live over the WebSocket API. A setup wizard discovers the entities, picks panels, theme (five built in, previewable on the tablet) and layout; scripts scaffold, validate the config against the live HA, deploy with cache-busting, and upgrade without trampling local edits. |
 
@@ -52,6 +53,7 @@ After installing, ask your AI agent:
 - *"Something left hundreds of chrome.exe processes running"*
 - *"agent-browser said it closed everything but the browsers are still there"*
 - *"agent-browser can't launch Chrome — it says Chrome exited early without writing DevToolsActivePort"*
+- *"I get Provider turn failed in T3"*
 - *"Create a reveal-md presentation about microservices"*
 - *"Serve my slides.md locally"*
 - *"Export my presentation to PDF"*
