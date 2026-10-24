@@ -513,6 +513,18 @@ copied while live gets a `/srv/<app>/backup-pre.sh` that dumps it first.
   `$(cat)` runs as your user and can't read the root-only directory. Source the file
   inside `sudo bash`.
 
+**Report results to Home Assistant.** Rename the job to `backup-run` and make
+`/usr/local/sbin/backup` a wrapper. The wrapper runs `backup-run`, captures its exit code
+and last output line, then POSTs `{status, message, time, size_mb, snapshots}` to an HA
+**webhook** (`curl --retry 3`; the URL lives root-only in `/etc/restic/ha-webhook`). HA side:
+a webhook-triggered automation (`local_only: true`) writes the payload into
+`input_text`/`input_datetime`/`input_number` helpers, and a second automation notifies on a
+non-"ok" status, or daily when the last success is more than 26 h old, which catches a job
+that never ran. Nothing on the box needs an HA account. Don't put `if run_backup; then` around
+a function that relies on `set -e`: bash turns `set -e` off inside an `if` condition, so
+failures pass silently. Use a separate script and check its exit code. To test: unmount
+the card, run the wrapper, check that the alert arrives, remount, run it again.
+
 A card in the same machine guards against SSD failure, bad updates and mistakes, but not
 against theft, fire or the laptop dying with the card inside. Add an off-site copy for data
 that really matters.
