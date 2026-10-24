@@ -399,6 +399,28 @@ it is, its port, how it's deployed, and anything shared-infrastructure-sensitive
 spirit as the Pi's entry in the private `CLAUDE.md`. Treat the box as shared: don't repurpose
 ports, reboot, or reconfigure networking without checking what else depends on it.)*
 
+### Automatic updates
+
+Out of the box, `unattended-upgrades` installs **security updates only**, so regular bug-fix
+updates pile up in the "N updates available" count. Add a local override, and leave the
+packaged `50unattended-upgrades` untouched so package upgrades don't conflict with it:
+
+```
+// /etc/apt/apt.conf.d/52unattended-upgrades-local
+Unattended-Upgrade::Allowed-Origins:: "${distro_id}:${distro_codename}-updates";
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+Unattended-Upgrade::Automatic-Reboot "true";
+Unattended-Upgrade::Automatic-Reboot-WithUsers "true";
+Unattended-Upgrade::Automatic-Reboot-Time "04:00";
+```
+
+Verify with `sudo unattended-upgrade --dry-run --debug | grep "Allowed origins"`. The reboot
+time is in the box's own time zone, which defaults to UTC. A few updates that remain are
+**phased** ("deferred due to phasing"): Ubuntu rolls those out gradually, and they install
+later by themselves. Auto mode refuses to set up this standing auto-update/auto-reboot
+policy on Claude's behalf, so the human runs it.
+
 ### NVIDIA driver on a Secure Boot laptop
 
 `sudo ubuntu-drivers install --gpgpu` installs the headless `*-server-open` driver. Its
