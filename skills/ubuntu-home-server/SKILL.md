@@ -416,7 +416,9 @@ Unattended-Upgrade::Automatic-Reboot-Time "04:00";
 ```
 
 Verify with `sudo unattended-upgrade --dry-run --debug | grep "Allowed origins"`. The reboot
-time is in the box's own time zone, which defaults to UTC. A few updates that remain are
+time is in the box's own time zone, which defaults to UTC. Set the local one with
+`sudo timedatectl set-timezone Europe/Brussels`, which also puts log and dashboard
+timestamps in local time. A few updates that remain are
 **phased** ("deferred due to phasing"): Ubuntu rolls those out gradually, and they install
 later by themselves. Auto mode refuses to set up this standing auto-update/auto-reboot
 policy on Claude's behalf, so the human runs it.
