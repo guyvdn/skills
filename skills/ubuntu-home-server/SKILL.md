@@ -428,13 +428,15 @@ Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
 Unattended-Upgrade::Remove-Unused-Dependencies "true";
 Unattended-Upgrade::Automatic-Reboot "true";
 Unattended-Upgrade::Automatic-Reboot-WithUsers "true";
-Unattended-Upgrade::Automatic-Reboot-Time "04:00";
+Unattended-Upgrade::Automatic-Reboot-Time "05:00";
 ```
 
 Verify with `sudo unattended-upgrade --dry-run --debug | grep "Allowed origins"`. The reboot
 time is in the box's own time zone, which defaults to UTC. Set the local one with
 `sudo timedatectl set-timezone Europe/Brussels`, which also puts log and dashboard
-timestamps in local time. A few updates that remain are
+timestamps in local time. Pick a reboot time after every nightly job has finished: the
+backup runs at 03:00, and an app's own nightly batch (one starts at 03:30 and runs 20+
+minutes) would be cut off by a 04:00 reboot, hence 05:00. A few updates that remain are
 **phased** ("deferred due to phasing"): Ubuntu rolls those out gradually, and they install
 later by themselves. Auto mode refuses to set up this standing auto-update/auto-reboot
 policy on Claude's behalf, so the human runs it.
@@ -515,7 +517,7 @@ copied while live gets a `/srv/<app>/backup-pre.sh` that dumps it first.
   password is from `openssl rand -base64 32`, kept root-only in `/etc/restic/password`. The
   human must copy it somewhere off the box (and from their own terminal, not through Claude),
   or the backups can't be restored once the box is gone.
-- **Job:** `/usr/local/sbin/backup`, run by `backup.timer` at 03:00 (before the 04:00 update
+- **Job:** `/usr/local/sbin/backup`, run by `backup.timer` at 03:00 (before the 05:00 update
   reboot), with `RequiresMountsFor=/mnt/backup`. It:
   1. copies live SQLite databases with the `sqlite3` backup API into `/var/backups/sqlite`,
      and excludes the live files;
@@ -557,8 +559,38 @@ Install from Docker's own apt repo (`/etc/apt/keyrings/docker.asc` plus a deb822
 ```
 
 Give every app `restart: unless-stopped`, because unattended-upgrades reboots the box at
-04:00 when an update requires it. Docker's repo isn't among unattended-upgrades' origins,
+05:00 when an update requires it. Docker's repo isn't among unattended-upgrades' origins,
 so Docker itself only updates when you upgrade it by hand.
+
+### Deploying an app
+
+Each app gets the same shape, so backups, reboots and secrets need no per-app thought:
+
+```
+/srv/<app>/
+  compose.yml        # restart: unless-stopped; bind mounts only, no named volumes
+  .env               # secrets: root:root 600, never on a share or in git
+  data/              # bind-mounted state (SQLite etc.)
+  src/               # source, when the image is built here
+  backup-pre.sh      # only if data/ can't be copied while live
+```
+
+- **Build on the box.** It's x86_64, so an image built for an arm64 Pi (`platform:
+  linux/arm64`) has to be rebuilt anyway. Building here needs no cross-compile, no image
+  tar and no registry. Ship committed source and build:
+  `git archive HEAD | ssh <box> 'sudo tar -x -C /srv/<app>/src'`, then
+  `sudo docker compose -f /srv/<app>/compose.yml up -d --build`. The box needs no git
+  credentials, and uncommitted changes can't leak into a deploy.
+- **Docker as sudo.** The login user isn't in the `docker` group (that group is
+  root-equivalent); with NOPASSWD sudo, `ssh <box> 'sudo docker …'` works unattended.
+- **SQLite:** the backup excludes live `*.db*` files, so a `backup-pre.sh` writes a
+  consistent copy, e.g. `docker exec <ctr> … VACUUM INTO '/data/backup/app.db'` (or the
+  `sqlite3` backup API), into a path under `/srv/<app>` that the backup does include.
+- **Static sites:** a small `nginx:alpine` container with the site bind-mounted read-only.
+  Because `/srv/<app>` belongs to that app alone, mirroring with deletes is safe here,
+  unlike a folder shared with other projects.
+- **Ports:** record each one in the private `CLAUDE.md` port table before using it. Glances
+  will add container sensors to HA with IP-based names; rename them like the rest.
 
 ### Glances → Home Assistant
 
