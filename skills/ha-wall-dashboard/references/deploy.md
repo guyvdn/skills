@@ -51,6 +51,11 @@ home LAN. Say it plainly, once, during setup, and:
   your own devices. Its **`funnel`** mode publishes it, token included. Check by
   resolving the name with public DNS: a `100.x` (CGNAT) address means
   tailnet-only.
+  `serve` also needs HA to trust the app as a proxy: **Settings → System → Network →
+  HTTP server**, *Trust X-Forwarded-For* on, *Trusted proxies* `127.0.0.1`. Since HA
+  2026.8 that is UI-only: a YAML `http:` block passes `check_config` but is silently
+  ignored, and the app then dies with `Unable to connect to Home Assistant as reverse
+  proxy`. The dashboard needs no change: it builds its URLs from `location`.
 - **Never** put the token in the chat, a commit, or a file outside `config.local.js`.
 
 Non-admin users can read states, call services, read history and calendars,
