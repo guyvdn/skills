@@ -485,6 +485,38 @@ rest of the volume group unallocated. Before deploying anything, grow it while t
 running: `sudo lvextend -r -l +100%FREE /dev/ubuntu-vg/ubuntu-lv` (`-r` also grows the
 ext4 filesystem).
 
+### Backups (restic to a local SD card)
+
+Convention: **every app lives in `/srv/<app>`**, with its compose file plus bind-mounted
+data (not named volumes), so one backup path covers all apps. A database that can't be
+copied while live gets a `/srv/<app>/backup-pre.sh` that dumps it first.
+
+- **Card:** leave it FAT32, so that if the server dies you can restore the card on a Windows
+  PC with `restic.exe`. restic works fine on vfat. Mount it by UUID in fstab with
+  `nofail,x-systemd.device-timeout=10s,uid=0,gid=0,umask=077`, so a missing card doesn't
+  block boot.
+- **Repository:** `/etc/restic/env` holds `RESTIC_REPOSITORY` and `RESTIC_PASSWORD_FILE`. The
+  password is from `openssl rand -base64 32`, kept root-only in `/etc/restic/password`. The
+  human must copy it somewhere off the box (and from their own terminal, not through Claude),
+  or the backups can't be restored once the box is gone.
+- **Job:** `/usr/local/sbin/backup`, run by `backup.timer` at 03:00 (before the 04:00 update
+  reboot), with `RequiresMountsFor=/mnt/backup`. It:
+  1. copies live SQLite databases with the `sqlite3` backup API into `/var/backups/sqlite`,
+     and excludes the live files;
+  2. runs the per-app hooks;
+  3. runs `restic backup --one-file-system /etc /srv /home /root /var/backups /opt/beszel`;
+  4. runs `forget --prune --keep-daily 7 --keep-weekly 4 --keep-monthly 6`;
+  5. runs `check --read-data-subset=2%`.
+- **Prove it:** after the first run, restore a config file and a database copy to `/tmp` and
+  open them.
+- **Pitfall when scripting it:** `sudo env $(cat /etc/restic/env) …` fails, because the
+  `$(cat)` runs as your user and can't read the root-only directory. Source the file
+  inside `sudo bash`.
+
+A card in the same machine guards against SSD failure, bad updates and mistakes, but not
+against theft, fire or the laptop dying with the card inside. Add an off-site copy for data
+that really matters.
+
 ### Docker
 
 Install from Docker's own apt repo (`/etc/apt/keyrings/docker.asc` plus a deb822
