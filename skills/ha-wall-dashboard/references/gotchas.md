@@ -57,6 +57,18 @@ handling while "cleaning up", and so new panels don't reintroduce them.
   both forms where a format has changed before, and convert ISO to local time.
 - **`unavailable` / `unknown` are states, not errors.** Every paint path must render
   them as `—`, never `NaN`, `0` or a crash.
+- **A missing entity is not an `unavailable` one.** Until the first `get_states`
+  arrives the store has nothing, so an "is the server down?" check must key on an
+  explicit `unavailable` / `unknown` state. Key it on absence and every page load
+  flashes a red OFFLINE.
+- **New entities on an existing device can get a different ID prefix.** Entities
+  created after the device was renamed upstream take the new name
+  (`sensor.kitchen_dishwasher_*`) while older ones keep theirs
+  (`sensor.dishwasher_*`). Search the entity registry by device before concluding
+  an entity doesn't exist, then rename it to the ID your config expects. Many
+  integrations also ship new entities disabled; after enabling one via the registry
+  (which promises a reload in 30 s), a manual `homeassistant.reload_config_entry`
+  may still be needed before it gets a state.
 - **Music Assistant** reports `media_content_id` in its `library://…` form even
   when you started playback with a provider URI. Compare against the library id,
   or an "is this station playing" highlight never matches.
