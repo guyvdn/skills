@@ -439,11 +439,16 @@ temperatures, battery and GPUs better than the Docker one. Download each install
 then run it:
 
 ```bash
-curl -fsSL https://get.beszel.dev/hub -o install-hub.sh && sudo sh install-hub.sh -p 8090
+curl -fsSL https://get.beszel.dev/hub -o install-hub.sh && sudo sh install-hub.sh -p 8090 --auto-update
 PUB=$(sudo ssh-keygen -y -f /opt/beszel/beszel_data/id_ed25519)    # the hub's key
 curl -fsSL https://get.beszel.dev -o install-agent.sh
-sudo sh install-agent.sh -k "$PUB" -p 45876 --auto-update false </dev/null
+sudo sh install-agent.sh -k "$PUB" -p 45876 --auto-update true </dev/null
 ```
+
+Beszel isn't apt-managed, so unattended-upgrades never touches it. `--auto-update` (on
+the hub script, `--auto-update` with no value) adds a daily `beszel-*-update.timer` that runs
+`<binary> update`. If you installed without it, create the same `.service`/`.timer` pair
+by hand: `OnCalendar=daily`, `RandomizedDelaySec=4h`, `Persistent=true`.
 
 The agent script grants `DeviceAllow` for `/dev/nvidia*` automatically (so install the
 NVIDIA driver first). Intel iGPU stats need `intel-gpu-tools`, plus a drop-in giving
