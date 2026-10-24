@@ -391,7 +391,11 @@ ports, reboot, or reconfigure networking without checking what else depends on i
   `=`/`+` position) types `=` on **French** AZERTY. A password typed under the wrong layout
   is stored as different characters. Verify the layout before typing the install password; if
   you're later locked out, try swapping `-`↔`=` (and other symbol keys) between the two
-  layouts.
+  layouts. To fix a box installed with the wrong layout, set `XKBLAYOUT="be"` /
+  `XKBVARIANT=""` in `/etc/default/keyboard` (over SSH, `sudo localectl set-x11-keymap` is
+  refused by polkit), then `sudo setupcon -k --force </dev/tty1 >/dev/tty1` to reload the
+  console. The stored password doesn't change, so at the console type it as it was
+  *stored*.
 - **`match:` WiFi bug** → `netplan generate` fails entirely → no WiFi, every boot. Define the
   WiFi interface by name (§5).
 - **cloud-init reverts netplan edits on reboot** → disable its network config (§6).
