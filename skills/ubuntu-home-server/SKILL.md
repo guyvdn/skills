@@ -622,6 +622,38 @@ Each app gets the same shape, so backups, reboots and secrets need no per-app th
   gets no HA sensors of its own from Glances, only a share of the Docker totals (see
   "Glances → Home Assistant").
 
+### Off-box target for Home Assistant's backups (Samba)
+
+HA's automatic backups land only on its own disk by default (on a Pi, the same SD card it
+runs on). HA can also write each backup to a network share (Settings → System → Storage →
+Add network storage, usage **Backup**, then select it under Backups → locations). Give it a
+share that needs a login and serves nothing else:
+
+```bash
+sudo apt-get install -y samba
+sudo useradd --system --no-create-home --shell /usr/sbin/nologin habackup
+sudo install -d -o habackup -g habackup -m 700 /srv/ha-backups
+# set its Samba password without echoing it anywhere a transcript can see:
+PW=$(openssl rand -base64 24 | tr -d '/+=' | cut -c1-24)
+printf '%s\n%s\n' "$PW" "$PW" | sudo smbpasswd -s -a habackup
+```
+
+A minimal `/etc/samba/smb.conf` (keep the packaged one as `smb.conf.dist`): `server role =
+standalone server`, `server min protocol = SMB2_10`, `smb encrypt = desired`, `map to guest =
+never`, `restrict anonymous = 2`, `disable netbios = yes`, `smb ports = 445`, printing off,
+and one share with `valid users = habackup`, `browseable = no`, masks 0600/0700. Then
+`sudo systemctl disable --now nmbd`. Prove it from Windows (`New-PSDrive … -Credential`,
+write and delete a file) and check `sudo smbstatus -b` shows SMB3 with encryption.
+
+- **Exclude the folder from the restic job.** HA backups are encrypted tars, so restic
+  can't dedupe them: three ~2.5 GB copies would fill a small backup card within weeks.
+  The copy on this disk is already the off-box copy.
+- **The encryption key is the backup.** HA encrypts backups by default; without the key
+  from its emergency kit, these files can't be restored.
+- If a freshly set password is refused from Windows, test it on the box first
+  (`smbclient //localhost/<share> -A <credfile>` with the file in `/dev/shm`, deleted
+  straight after) to tell a wrong password from a client-side problem.
+
 ### Glances → Home Assistant
 
 Beszel can't send data to HA. Its HA add-ons do the opposite: they put an agent on the HA
