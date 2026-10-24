@@ -46,6 +46,11 @@ home LAN. Say it plainly, once, during setup, and:
   too. Then the token in that file is reachable from outside. Strongly prefer
   the dedicated non-admin user in that case. Consider whether the dashboard
   should only be reachable on the LAN.
+- For remote access, a private overlay network keeps `/local/` off the internet:
+  the Tailscale app in **`serve`** mode gives HA an HTTPS name reachable only from
+  your own devices. Its **`funnel`** mode publishes it, token included. Check by
+  resolving the name with public DNS: a `100.x` (CGNAT) address means
+  tailnet-only.
 - **Never** put the token in the chat, a commit, or a file outside `config.local.js`.
 
 Non-admin users can read states, call services, read history and calendars,

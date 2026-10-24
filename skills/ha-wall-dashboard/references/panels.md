@@ -151,3 +151,33 @@ page next to `index.html`. Copy `index.html` to `phone.html`, and have it import
 second boot module that loads `dashboard.phone.config.js`, or factor `boot()` to
 take the config as a parameter. Literal imports only; the deploy stamps every
 top-level `*.html` page.
+
+### A phone page as an installed app
+
+The phone page can be installed as an Android app (Chrome → Install app), which
+opens full-screen from a home-screen icon. Chrome only offers that on **HTTPS**, so
+it needs a secure origin for HA itself: the Tailscale app's `serve` mode
+(tailnet-only, real certificate) works well; a plain `http://` LAN address never
+qualifies. What it takes:
+
+- A manifest linked from the page (`<link rel="manifest">`): `id` and `start_url`
+  set to the page, `scope` set to the dashboard folder, `display: standalone`,
+  `orientation: portrait`, and 192 and 512 px PNG icons (the 512 also as
+  `maskable`, with the artwork inside the central 80 %).
+- A service worker with a `fetch` handler, scoped to the dashboard folder. The
+  cache-bypassing worker the dashboard already uses qualifies.
+- A `wss://` WebSocket URL when the page is on HTTPS: derive it from
+  `location.protocol`, never hardcode `ws://`.
+- Check with CDP `Page.getInstallabilityErrors` (empty list = installable).
+
+The token warning in [deploy.md](deploy.md) applies with extra force: keep the
+HTTPS name private to the tailnet (Tailscale `serve`, never `funnel`).
+
+**Portrait sizing:** a phone in portrait gives each tile roughly 120 px square,
+far smaller than the tablet. Instead of a separate set of px sizes, make each tile
+a size container (`container-type: size`) and set the size tokens on the page as
+`min(<n>cqmin, <tablet px>)`, e.g. `--font-sm: min(11cqmin, 20px)`. A custom
+property holding `cqmin` is resolved where it is *used*, against the nearest
+container, so one token set scales every tile, and the px cap leaves larger
+screens as they were. Scale the fixed-px parts inside tiles (bar heights, small
+icons) the same way.
