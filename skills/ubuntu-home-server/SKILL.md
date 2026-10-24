@@ -399,6 +399,36 @@ it is, its port, how it's deployed, and anything shared-infrastructure-sensitive
 spirit as the Pi's entry in the private `CLAUDE.md`. Treat the box as shared: don't repurpose
 ports, reboot, or reconfigure networking without checking what else depends on it.)*
 
+### NVIDIA driver on a Secure Boot laptop
+
+`sudo ubuntu-drivers install --gpgpu` installs the headless `*-server-open` driver. Its
+kernel modules come prebuilt and signed by Canonical (`linux-modules-nvidia-*`), so you don't
+have to enroll a MOK key at the console. Then install `nvidia-utils-<ver>-server` to get
+`nvidia-smi`. The modules may target a **newer kernel** that apt pulled in at the same
+time. That's fine: reboot into it. `sudo systemctl reboot` over SSH can take ~30 s to
+actually go down, so check `uptime -s` afterwards instead of trusting that SSH answered.
+
+### Beszel (monitoring dashboard)
+
+Hub and agent run as binaries under systemd on the same box. The binary agent sees
+temperatures, battery and GPUs better than the Docker one. Download each install script,
+then run it:
+
+```bash
+curl -fsSL https://get.beszel.dev/hub -o install-hub.sh && sudo sh install-hub.sh -p 8090
+PUB=$(sudo ssh-keygen -y -f /opt/beszel/beszel_data/id_ed25519)    # the hub's key
+curl -fsSL https://get.beszel.dev -o install-agent.sh
+sudo sh install-agent.sh -k "$PUB" -p 45876 --auto-update false </dev/null
+```
+
+The agent script grants `DeviceAllow` for `/dev/nvidia*` automatically (so install the
+NVIDIA driver first). Intel iGPU stats need `intel-gpu-tools`, plus a drop-in giving
+`AmbientCapabilities=CAP_PERFMON` / `CapabilityBoundingSet=CAP_PERFMON`, plus
+`kernel.perf_event_paranoid = 2` in `/etc/sysctl.d/`. The human creates their own account
+at `http://<SERVER_IP>:8090` and adds a system with host `localhost` and port `45876`. The
+agent's "invalid HUB_URL" warning is harmless in this mode, because the hub connects to the
+agent over SSH.
+
 ---
 
 ## Gotchas (quick reference)
