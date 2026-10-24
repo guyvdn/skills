@@ -451,12 +451,54 @@ the hub script, `--auto-update` with no value) adds a daily `beszel-*-update.tim
 by hand: `OnCalendar=daily`, `RandomizedDelaySec=4h`, `Persistent=true`.
 
 The agent script grants `DeviceAllow` for `/dev/nvidia*` automatically (so install the
-NVIDIA driver first). Intel iGPU stats need `intel-gpu-tools`, plus a drop-in giving
-`AmbientCapabilities=CAP_PERFMON` / `CapabilityBoundingSet=CAP_PERFMON`, plus
-`kernel.perf_event_paranoid = 2` in `/etc/sysctl.d/`. The human creates their own account
-at `http://<SERVER_IP>:8090` and adds a system with host `localhost` and port `45876`. The
-agent's "invalid HUB_URL" warning is harmless in this mode, because the hub connects to the
-agent over SSH.
+NVIDIA driver first). Put everything else in one drop-in,
+`/etc/systemd/system/beszel-agent.service.d/local.conf`:
+
+```ini
+[Service]
+Environment="LISTEN=127.0.0.1:45876"                       # only the local hub needs it
+AmbientCapabilities=CAP_PERFMON CAP_SYS_ADMIN CAP_SYS_RAWIO   # Intel GPU; NVMe S.M.A.R.T.
+CapabilityBoundingSet=CAP_PERFMON CAP_SYS_ADMIN CAP_SYS_RAWIO # ambient caps missing here are dropped silently
+DeviceAllow=/dev/nvme0 r
+DeviceAllow=/dev/nvme0n1 r
+SupplementaryGroups=docker                                  # container stats
+```
+
+That drop-in alone isn't enough:
+- **Intel iGPU:** install `intel-gpu-tools` and set `kernel.perf_event_paranoid = 2` in
+  `/etc/sysctl.d/`.
+- **S.M.A.R.T.:** install `smartmontools`, and add a udev rule, because `/dev/nvme0` is
+  `crw------- root`:
+  `KERNEL=="nvme[0-9]*", GROUP="disk", MODE="0660"` in
+  `/etc/udev/rules.d/90-nvme-disk-group.rules`. The installer already puts `beszel` in
+  `disk`. Don't test with a plain `sudo -u beszel smartctl`: it lacks `CAP_SYS_ADMIN` and
+  fails even when the service works. Check the hub's `smart_devices` table instead.
+
+The human creates their own account at `http://<SERVER_IP>:8090` and adds a system with host
+`localhost` and port `45876`. The agent's "invalid HUB_URL" warning is harmless in this
+mode, because the hub connects to the agent over SSH.
+
+### Disk: use the whole SSD
+
+The Ubuntu Server installer's LVM layout gives the root volume only ~100 GB and leaves the
+rest of the volume group unallocated. Before deploying anything, grow it while the box is
+running: `sudo lvextend -r -l +100%FREE /dev/ubuntu-vg/ubuntu-lv` (`-r` also grows the
+ext4 filesystem).
+
+### Docker
+
+Install from Docker's own apt repo (`/etc/apt/keyrings/docker.asc` plus a deb822
+`/etc/apt/sources.list.d/docker.sources`; it supports Ubuntu 26.04). Install `docker-ce`,
+`docker-ce-cli`, `containerd.io`, `docker-buildx-plugin` and `docker-compose-plugin`. Write
+`/etc/docker/daemon.json` **before** the first container starts:
+
+```json
+{ "log-driver": "local", "log-opts": { "max-size": "10m", "max-file": "3" } }
+```
+
+Give every app `restart: unless-stopped`, because unattended-upgrades reboots the box at
+04:00 when an update requires it. Docker's repo isn't among unattended-upgrades' origins,
+so Docker itself only updates when you upgrade it by hand.
 
 ### Glances → Home Assistant
 
