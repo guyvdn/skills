@@ -51,8 +51,10 @@ handling while "cleaning up", and so new panels don't reintroduce them.
   past, twice, was a cloud integration whose subscription died mid-cycle. Check
   `last_reported` in HA before touching formatting code. Reloading the integration fixes it.
 - **Timestamp formats vary by integration and even by state.** One reported ISO while
-  running and `MM/DD/YYYY` while stopped; a 3D printer reports `DD/MM/YYYY`. Write
-  a parser test per integration before trusting a format.
+  running and `MM/DD/YYYY` while stopped. A 3D printer integration sent local
+  `DD/MM/YYYY HH:MM:SS`, then switched to ISO UTC in a later version, which left a
+  regex-only parser silently showing `—`. Write a parser test per integration, accept
+  both forms where a format has changed before, and convert ISO to local time.
 - **`unavailable` / `unknown` are states, not errors.** Every paint path must render
   them as `—`, never `NaN`, `0` or a crash.
 - **Music Assistant** reports `media_content_id` in its `library://…` form even
