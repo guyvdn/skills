@@ -729,8 +729,11 @@ it lets the phone start and follow agent sessions while the dev PC is off.
   and Claude sends it from the clipboard straight to the agent user's
   `~/.git-credentials` (600, `credential.helper store`) without printing it:
   `"https://<user>:$t@github.com" | ssh … 'sudo -u claude sh -c "umask 077; cat > /home/claude/.git-credentials"'`.
-  Check the prefix (`github_pat_`) before sending. Verify with `git ls-remote` and
-  `GET /user/repos`. For anything multi-line as the agent user, copy a script over and
+  Check the prefix (`github_pat_`) before sending. **PowerShell pipes to native commands
+  with CRLF**, so the line ends in `\r`, the host no longer matches `github.com`, and git
+  falls back to a prompt ("could not read Username… terminal prompts disabled"). Strip it
+  on the box with `sed -i 's/\r$//'`. Verify with `git ls-remote` against a **private**
+  repo: a public one succeeds without any credentials and proves nothing. For anything multi-line as the agent user, copy a script over and
   run `sudo -iu claude bash script.sh`. `sudo -iu … bash -c "…"` mangles newlines and
   quoting.
 
