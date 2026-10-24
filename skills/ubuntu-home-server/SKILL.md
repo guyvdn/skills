@@ -721,8 +721,16 @@ it lets the phone start and follow agent sessions while the dev PC is off.
   link on the `ts.net` name. Have the human run it, so the QR code renders in their
   terminal. Paired sessions expire after 30 days. Manage them with
   `t3 auth session list|revoke` and `t3 auth pairing list|revoke`.
-- **Backups:** exclude `~/.t3/runtime` and `~/.local/share/claude` (~570 MB of
-  re-downloadable binaries that grow with every update). Keep the rest of the home.
+- **Backups:** exclude what can be downloaded again: `~/.t3/runtime` and
+  `~/.local/share/claude` (~570 MB of binaries that grow with every update), and once
+  projects are cloned, `**/node_modules`, `**/.next`, a per-user Node under `~/.local`, and
+  the pnpm store. One cloned Next.js project took the home from 0.6 to 1.9 GB, and 40 MB
+  of it was worth keeping. Prove the patterns with `restic backup --dry-run <home>
+  --exclude …` (`-q` and `-vv` can't be combined). Keep the rest: agent state, `.env`
+  files, unpushed work.
+- **T3's "Add to another machine" dialog** clones a local project onto the server and can
+  copy git-ignored files along. Pick HTTPS (the token), take only the `.env` file, then
+  fix its Windows paths and `chmod 600` it (it arrives 664).
 - **GitHub access:** Claude can't create a token, but it can open the form pre-filled
   (`https://github.com/settings/personal-access-tokens/new?name=…&target_name=<owner>&expires_in=90&contents=write&pull_requests=write`).
   Repository selection can't be pre-filled, so the human picks it. They copy the token
