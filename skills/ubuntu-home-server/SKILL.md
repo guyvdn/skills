@@ -373,6 +373,22 @@ journalctl -u systemd-logind --since -10min | grep -i lid   # expect: "Lid close
 
 Then confirm that it keeps answering pings from Windows for a minute or so.
 
+### Power back on after an outage
+
+If a long power cut drains the battery, the laptop stays off when power returns. On
+ThinkPads the BIOS option is **"Power On with AC Attach"**, and you can set it from Linux
+without visiting the BIOS (as long as there's no BIOS admin password):
+
+```bash
+d=/sys/class/firmware-attributes/thinklmi/attributes
+sudo cat $d/OnByAcAttach/current_value            # Disable
+echo Enable | sudo tee $d/OnByAcAttach/current_value
+cat $d/pending_reboot                             # 1 → applies at next boot
+```
+
+Reboot once, then confirm that it still reads `Enable` and `pending_reboot` is back to `0`.
+`ls $d` lists every other BIOS setting (Wake-on-LAN, boot order, Secure Boot …).
+
 ### Don't keep the battery at 100%
 
 An always-plugged laptop sitting at full charge wears its battery fast. ThinkPads (and
