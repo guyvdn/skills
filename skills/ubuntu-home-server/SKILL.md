@@ -174,6 +174,34 @@ Key rules, each learned the hard way:
 - A paramiko `AuthenticationException` is **identical for wrong-username and wrong-password**.
   Don't guess which, and never brute-force — confirm the exact user/password with the human.
 
+### Then: go key-only with passwordless sudo
+
+The clipboard routine above is only needed while bootstrapping. Once the box is reachable,
+switch it to **a dedicated key, NOPASSWD sudo and no password SSH**, and from then on it's
+plain `ssh -i <NEW_KEY> <USER>@<SERVER_IP> 'sudo …'`. With password login off, the key is the
+security boundary. Give this box **its own key** and don't reuse a key that unlocks other
+machines, so a lost key exposes one machine only.
+
+`scripts/keys_only.py` does it in one run. The human runs it from the Claude Code prompt with
+`!`: auto mode blocks *Claude* from installing keys and granting root (it calls that
+"unauthorized persistence"), and that decision rightly belongs to the human. Copy the sudo
+password to the clipboard, then **type or recall** the command. Pasting the command overwrites
+the clipboard, and sudo then fails with three "Authentication failed" messages, because it
+reads the next script lines as two more password attempts.
+
+```
+! python <skills>/ubuntu-home-server/scripts/keys_only.py <SERVER_IP> <USER> --bootstrap-key <KEY> --key ~/.ssh/<NEW_KEY>
+```
+
+Each step checks its result before the next one can change access, and a re-run skips what's
+done: create the key → install it and test it → write the sudoers drop-in (checked with
+`visudo -c` before it's moved into place) and `sshd_config.d/00-keys-only.conf` → require
+`sudo -n` in a fresh session → only then remove the bootstrap key → confirm the server offers
+only `publickey`. The sshd drop-in must sort **before** `50-cloud-init.conf`: sshd keeps the
+*first* value it reads, and cloud-init's file can set `PasswordAuthentication yes`.
+
+You can't lock yourself out this way. A console login still takes the password, and sudo works there.
+
 ---
 
 ## 5. The core WiFi fix (netplan + networkd)
@@ -321,6 +349,30 @@ ssh -i <KEY> -o BatchMode=yes <USER>@<SERVER_IP> '
   ping -c2 -W2 archive.ubuntu.com | tail -2'
 ```
 
+### Keep running with the lid closed
+
+Out of the box, logind **suspends on lid close**, and the server drops off the LAN ("Destination
+host unreachable"). Open the lid (or press power) to wake it. Then, as root (plain `sudo` once
+the box is key-only, otherwise via the §4 paramiko pattern):
+
+```bash
+mkdir -p /etc/systemd/logind.conf.d
+printf '[Login]\nHandleLidSwitch=ignore\nHandleLidSwitchExternalPower=ignore\nHandleLidSwitchDocked=ignore\n' \
+  > /etc/systemd/logind.conf.d/lid.conf
+systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
+systemctl restart systemd-logind   # safe over SSH; your session survives
+```
+
+Verify with the lid **actually** closed. A lid that isn't fully latched still reads `open`,
+and then the test proves nothing:
+
+```bash
+cat /proc/acpi/button/lid/*/state                  # expect: closed
+journalctl -u systemd-logind --since -10min | grep -i lid   # expect: "Lid closed."
+```
+
+Then confirm that it keeps answering pings from Windows for a minute or so.
+
 ---
 
 ## 10. Services & projects
@@ -344,6 +396,7 @@ ports, reboot, or reconfigure networking without checking what else depends on i
   WiFi interface by name (§5).
 - **cloud-init reverts netplan edits on reboot** → disable its network config (§6).
 - **`netplan apply` drops your SSH link** → run detached + log to a file (§7).
+- **Closing the lid suspends the box** by default → logind drop-in + mask sleep targets (§9).
 - **No NetworkManager/`nmcli`/`iw`/`rfkill`** on this box — it's networkd + wpa_supplicant.
 - **`sed` under `set -e` can abort silently** → re-read files after editing; prefer Python.
 - **Stale `known_hosts`** after DHCP reuse → `ssh-keygen -R <ip>` (symptom can be a misleading
@@ -354,5 +407,9 @@ ports, reboot, or reconfigure networking without checking what else depends on i
   (`sed -E 's/(password:).*/\1 ****/'`). The WiFi passphrase lives **cleartext** in the
   root-only netplan file — that's normal for netplan, just don't leave that file
   world-readable.
+- **Password sudo is bootstrap-only** → run `scripts/keys_only.py` once the box is reachable (§4).
+- **sshd drop-ins: first value wins** → name overrides `00-…` so they beat `50-cloud-init.conf`.
+- **Pasting a command clobbers a password on the clipboard** → copy the secret last, then type
+  or recall the command.
 - **paramiko:** key-based connect + `sudo -S -p ""` for sudo; no `get_pty()`; base64 file
   bodies over the channel; auth errors don't distinguish user vs password.
