@@ -723,6 +723,16 @@ it lets the phone start and follow agent sessions while the dev PC is off.
   `t3 auth session list|revoke` and `t3 auth pairing list|revoke`.
 - **Backups:** exclude `~/.t3/runtime` and `~/.local/share/claude` (~570 MB of
   re-downloadable binaries that grow with every update). Keep the rest of the home.
+- **GitHub access:** Claude can't create a token, but it can open the form pre-filled
+  (`https://github.com/settings/personal-access-tokens/new?name=…&target_name=<owner>&expires_in=90&contents=write&pull_requests=write`).
+  Repository selection can't be pre-filled, so the human picks it. They copy the token
+  and Claude sends it from the clipboard straight to the agent user's
+  `~/.git-credentials` (600, `credential.helper store`) without printing it:
+  `"https://<user>:$t@github.com" | ssh … 'sudo -u claude sh -c "umask 077; cat > /home/claude/.git-credentials"'`.
+  Check the prefix (`github_pat_`) before sending. Verify with `git ls-remote` and
+  `GET /user/repos`. For anything multi-line as the agent user, copy a script over and
+  run `sudo -iu claude bash script.sh`. `sudo -iu … bash -c "…"` mangles newlines and
+  quoting.
 
 ### Glances → Home Assistant
 
