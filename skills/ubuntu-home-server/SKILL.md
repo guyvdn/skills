@@ -688,6 +688,42 @@ sudo tailscale status                              # shows the same URL until so
 - Apps need no change. Docker's published ports listen on all interfaces, the tailnet one
   included.
 
+#### Coding-agent sessions from the phone (T3 Code + Claude Code)
+
+T3 Code is a web UI for Claude Code/Codex sessions. On the server, reached over Tailscale,
+it lets the phone start and follow agent sessions while the dev PC is off.
+
+- **Run it as a separate user without sudo or the `docker` group.** The admin user has
+  NOPASSWD sudo, and docker group membership is root by another name. An agent session
+  there could otherwise change anything on a box that holds the backups and live apps.
+  The cost is that sessions can't deploy, so deploys stay on the dev PC.
+  ```bash
+  sudo useradd --create-home --shell /bin/bash claude && sudo chmod 750 /home/claude
+  sudo loginctl enable-linger claude      # its user services run with nobody logged in
+  sudo -iu claude bash -c 'curl -fsSL https://claude.ai/install.sh | bash'
+  sudo -iu claude bash -c 'curl -fsSL https://t3.codes/install.sh | sh'
+  ```
+  Auto mode refuses to create the user or pipe installers to a shell on Claude's behalf.
+  Put these lines in a script, copy it over and have the human run it with `!`.
+- **Claude login needs a TTY.** The human runs, in their own terminal,
+  `ssh -t <admin>@<server> "sudo -iu claude /home/claude/.local/bin/claude"`. Give the full
+  path: `~` would expand to the admin's home before sudo runs. Check afterwards with
+  `claude -p "reply with just OK"`.
+- **Service:** run `t3 service install` as the user, with
+  `XDG_RUNTIME_DIR=/run/user/<uid>` and `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/<uid>/bus`,
+  because `sudo -iu` doesn't set them. It creates a systemd *user* unit `t3code.service` on
+  127.0.0.1:3773.
+- **Publish it tailnet-only, as root:** `sudo tailscale serve --bg --https=443
+  http://127.0.0.1:3773`, after enabling HTTPS certificates in the tailnet's DNS settings.
+  That way the agent user doesn't need to be a Tailscale operator. `tailscale serve status`
+  must say "(tailnet only)", which means Funnel is off.
+- **Pairing:** `t3 pair --tailscale --ttl 10m --label phone` prints a one-time QR code and
+  link on the `ts.net` name. Have the human run it, so the QR code renders in their
+  terminal. Paired sessions expire after 30 days. Manage them with
+  `t3 auth session list|revoke` and `t3 auth pairing list|revoke`.
+- **Backups:** exclude `~/.t3/runtime` and `~/.local/share/claude` (~570 MB of
+  re-downloadable binaries that grow with every update). Keep the rest of the home.
+
 ### Glances → Home Assistant
 
 Beszel can't send data to HA. Its HA add-ons do the opposite: they put an agent on the HA
