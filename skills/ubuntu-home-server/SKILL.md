@@ -613,8 +613,9 @@ Each app gets the same shape, so backups, reboots and secrets need no per-app th
 - **Retiring the old host:** before deleting an app's files from where it used to run,
   search the consumers' config for the old **host:port**, not only the URL path. Another
   server or a cast automation may be fetching the same files on a port you didn't know about.
-- **Ports:** record each one in the private `CLAUDE.md` port table before using it. Glances
-  will add container sensors to HA with IP-based names; rename them like the rest.
+- **Ports:** record each one in the private `CLAUDE.md` port table before using it. An app
+  gets no HA sensors of its own from Glances, only a share of the Docker totals (see
+  "Glances → Home Assistant").
 
 ### Glances → Home Assistant
 
@@ -635,8 +636,27 @@ Then add the integration in HA: Settings → Devices & services → Glances, wit
 `<SERVER_IP>` and port `61208`. Or use the REST config flow:
 `POST /api/config/config_entries/flow {"handler":"glances"}`, then post `host`, `port`, `ssl`
 and `verify_ssl` to the flow. You get sensors for CPU, memory, disk, every temperature, fan,
-battery, the NVIDIA GPU (via `python3-pynvml`) and, once Docker runs, containers. The API
-has no authentication, so it stays LAN-only.
+battery, the NVIDIA GPU (via `python3-pynvml`) and, once Docker runs, three Docker totals.
+The API has no authentication, so it stays LAN-only.
+
+What to expect after setup:
+
+- **No per-container sensors.** HA's Glances integration creates only aggregates:
+  `containers_active` (count), `containers_cpu_usage` and `containers_memory_used`. Per-container
+  CPU and memory are only available from `/api/4/containers` or in Beszel.
+- **New entities appear only after a reload.** The sensor platform builds its entity list at
+  setup, so a newly mounted disk, a new network interface or Docker's first container stays
+  invisible until you reload the config entry (`homeassistant.reload_config_entry` with its
+  `entry_id`).
+- **Rename the device once and new entities follow.** The first batch gets IDs based on the IP
+  address (`sensor.192_168_…`) because the device is named after the host. Rename the device to
+  the box's hostname and rename those entities (WS `config/entity_registry/update` with
+  `new_entity_id`). Glances entities use `has_entity_name`, so everything added later already
+  gets IDs based on the hostname.
+- **Docker adds churn to network sensors.** Every bridge (`br-<id>`) and container interface
+  (`veth<id>`) becomes an RX/TX sensor pair. The `veth` name changes each time a container is
+  recreated, so each redeploy leaves those sensors `unavailable`. Delete or ignore them, or hide
+  the interfaces in Glances' config.
 
 ---
 
