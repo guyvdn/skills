@@ -29,6 +29,8 @@ SSH private key).
 - You can't find the box on the LAN, or SSH to it suddenly fails.
 - You need to drive it (run sudo commands, edit config) remotely from Windows.
 - You want to pin its IP address.
+- You want to reach its apps away from home (Tailscale, not port forwarding), or run
+  Claude Code / T3 Code agent sessions on it from a phone.
 
 ## Prerequisites (the Windows side)
 
@@ -721,6 +723,11 @@ it lets the phone start and follow agent sessions while the dev PC is off.
   link on the `ts.net` name. Have the human run it, so the QR code renders in their
   terminal. Paired sessions expire after 30 days. Manage them with
   `t3 auth session list|revoke` and `t3 auth pairing list|revoke`.
+- **Give the agent user its own `~/.claude/CLAUDE.md`.** The dev PC's global instructions
+  don't exist there, so without one a session doesn't know it's on the server, that it has
+  no sudo, that it mustn't deploy or take the live apps' ports, or that `D:\…` paths in a
+  repo's docs don't apply. Keep it short: constraints, git/token rules, secrets, backup
+  excludes, one line per cloned project.
 - **Backups:** exclude what can be downloaded again: `~/.t3/runtime` and
   `~/.local/share/claude` (~570 MB of binaries that grow with every update), and once
   projects are cloned, `**/node_modules`, `**/.next`, a per-user Node under `~/.local`, and
@@ -821,3 +828,9 @@ What to expect after setup:
   or recall the command.
 - **paramiko:** key-based connect + `sudo -S -p ""` for sudo; no `get_pty()`; base64 file
   bodies over the channel; auth errors don't distinguish user vs password.
+- **Remote access = Tailscale**, never a router port forward. Disable the server's key
+  expiry, and add Tailscale's repo to unattended-upgrades.
+- **Agent user:** no sudo, no docker group. Give it its own `~/.claude/CLAUDE.md` saying
+  where it runs and what it may not do, because the dev PC's global instructions don't
+  travel. `sudo -iu <user> …` expands `~` as the caller, so use full paths.
+- **Secrets piped from PowerShell gain a `\r`.** Strip it on the box.
