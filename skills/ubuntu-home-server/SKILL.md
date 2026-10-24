@@ -600,6 +600,11 @@ Each app gets the same shape, so backups, reboots and secrets need no per-app th
   - **A failing hook aborts the whole nightly backup** (`backup-run` is `set -e`), for
     every app, and the failure is reported like any other. Loud is right, but keep hooks
     simple and fail only on a real problem.
+- **Exclude bulk content that lives elsewhere.** A photo folder whose originals are in the
+  cloud and on the dev PC only fills the card and slows the job; add an
+  `--exclude "/srv/<app>/site/photos"` and restore by redeploying. If it already went into a
+  snapshot, `restic forget <id> --prune` reclaims the space; with the monthly retention it
+  would otherwise sit there for six months.
 - **Static sites:** a small `nginx:alpine` container with the site bind-mounted read-only.
   Because `/srv/<app>` belongs to that app alone, mirroring with deletes is safe here,
   unlike a folder shared with other projects. If the content isn't in git (e.g. a gitignored
