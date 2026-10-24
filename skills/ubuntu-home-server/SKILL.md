@@ -719,6 +719,12 @@ it lets the phone start and follow agent sessions while the dev PC is off.
   http://127.0.0.1:3773`, after enabling HTTPS certificates in the tailnet's DNS settings.
   That way the agent user doesn't need to be a Tailscale operator. `tailscale serve status`
   must say "(tailnet only)", which means Funnel is off.
+- **More apps on the same name get their own HTTPS port**, e.g.
+  `sudo tailscale serve --bg --https=8443 http://127.0.0.1:<app-port>`. Not a path such as
+  `/app` (most apps aren't built for a URL prefix), and not the app's own port number
+  (Docker already binds it on every interface, the tailnet IP included). `--bg` persists in
+  tailscaled's state across reboots. A real HTTPS origin is also what lets Chrome on
+  Android install a web app with a manifest as an app instead of a browser shortcut.
 - **Pairing:** `t3 pair --tailscale --ttl 10m --label phone` prints a one-time QR code and
   link on the `ts.net` name. Have the human run it, so the QR code renders in their
   terminal. Paired sessions expire after 30 days. Manage them with
