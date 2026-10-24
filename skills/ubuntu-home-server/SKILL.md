@@ -373,6 +373,23 @@ journalctl -u systemd-logind --since -10min | grep -i lid   # expect: "Lid close
 
 Then confirm that it keeps answering pings from Windows for a minute or so.
 
+### Don't keep the battery at 100%
+
+An always-plugged laptop sitting at full charge wears its battery fast. ThinkPads (and
+other laptops whose kernel driver exposes it) accept charge thresholds in sysfs. Set them
+with a udev rule, so they're reapplied on every boot even if the firmware forgets:
+
+```bash
+echo 'ACTION=="add|change", SUBSYSTEM=="power_supply", KERNEL=="BAT0", ATTR{charge_control_start_threshold}="75", ATTR{charge_control_end_threshold}="80"' \
+  | sudo tee /etc/udev/rules.d/90-battery-threshold.rules
+sudo udevadm control --reload
+sudo udevadm trigger --subsystem-match=power_supply --sysname-match=BAT0 --action=change
+cat /sys/class/power_supply/BAT0/charge_control_{start,end}_threshold   # 75 / 80
+```
+
+A battery already above the cap stays there ("Not charging") until it's drained. To bring
+it down now, write `force-discharge` to `charge_behaviour`, then `auto` once it's at the cap.
+
 ---
 
 ## 10. Services & projects
