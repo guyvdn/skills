@@ -429,6 +429,28 @@ at `http://<SERVER_IP>:8090` and adds a system with host `localhost` and port `4
 agent's "invalid HUB_URL" warning is harmless in this mode, because the hub connects to the
 agent over SSH.
 
+### Glances → Home Assistant
+
+Beszel can't send data to HA. Its HA add-ons do the opposite: they put an agent on the HA
+machine itself. HA has a native **Glances** integration instead. The apt package's service
+runs the old XML-RPC server on localhost, so override it to serve the REST API:
+
+```bash
+sudo apt-get install -y --no-install-recommends glances python3-uvicorn python3-jinja2 python3-pynvml python3-docker lm-sensors
+sudo mkdir -p /etc/systemd/system/glances.service.d
+printf '[Service]\nExecStart=\nExecStart=/usr/bin/glances -w --disable-webui -B 0.0.0.0 -p 61208\nRestart=on-failure\n' \
+  | sudo tee /etc/systemd/system/glances.service.d/api.conf
+sudo systemctl daemon-reload && sudo systemctl restart glances
+curl -s http://<SERVER_IP>:61208/api/4/pluginslist     # gpu, sensors, containers listed?
+```
+
+Then add the integration in HA: Settings → Devices & services → Glances, with host
+`<SERVER_IP>` and port `61208`. Or use the REST config flow:
+`POST /api/config/config_entries/flow {"handler":"glances"}`, then post `host`, `port`, `ssl`
+and `verify_ssl` to the flow. You get sensors for CPU, memory, disk, every temperature, fan,
+battery, the NVIDIA GPU (via `python3-pynvml`) and, once Docker runs, containers. The API
+has no authentication, so it stays LAN-only.
+
 ---
 
 ## Gotchas (quick reference)
