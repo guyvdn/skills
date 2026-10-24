@@ -581,11 +581,25 @@ Each app gets the same shape, so backups, reboots and secrets need no per-app th
   `git archive HEAD | ssh <box> 'sudo tar -x -C /srv/<app>/src'`, then
   `sudo docker compose -f /srv/<app>/compose.yml up -d --build`. The box needs no git
   credentials, and uncommitted changes can't leak into a deploy.
+  - **From Windows**, archive with `git -c core.autocrlf=false archive …`: with
+    `autocrlf=true`, `git archive` emits the CRLF working-tree form, which breaks shell
+    scripts in the image. PowerShell also can't `<`-redirect a file into `ssh`, so
+    `git archive -o x.tar.gz`, `scp` it to `/tmp`, then untar into a fresh `src.new` and
+    swap it in, so files deleted from the repo don't linger in the build context.
 - **Docker as sudo.** The login user isn't in the `docker` group (that group is
   root-equivalent); with NOPASSWD sudo, `ssh <box> 'sudo docker …'` works unattended.
-- **SQLite:** the backup excludes live `*.db*` files, so a `backup-pre.sh` writes a
-  consistent copy, e.g. `docker exec <ctr> … VACUUM INTO '/data/backup/app.db'` (or the
-  `sqlite3` backup API), into a path under `/srv/<app>` that the backup does include.
+- **SQLite:** live `*.db*` files must not be backed up as-is, so a `backup-pre.sh` writes a
+  consistent copy (`VACUUM INTO`, or the `sqlite3` backup API) into a path under
+  `/srv/<app>` that the backup does include, renamed into place only once complete.
+  - **Add the app's live database to `backup-run`'s excludes yourself**
+    (`--exclude "/srv/<app>/data/*.db*"`). The exclude list is per path, not a global
+    `*.db*` rule, so without that line restic also stores a possibly torn live copy.
+  - **Run the copy with the host's `python3`** (it ships SQLite) against the bind-mounted
+    file rather than `docker exec`: it then also works while the app is stopped, which is
+    exactly when a restore or a cutover needs it.
+  - **A failing hook aborts the whole nightly backup** (`backup-run` is `set -e`), for
+    every app, and the failure is reported like any other. Loud is right, but keep hooks
+    simple and fail only on a real problem.
 - **Static sites:** a small `nginx:alpine` container with the site bind-mounted read-only.
   Because `/srv/<app>` belongs to that app alone, mirroring with deletes is safe here,
   unlike a folder shared with other projects.
