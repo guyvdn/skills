@@ -654,6 +654,40 @@ write and delete a file) and check `sudo smbstatus -b` shows SMB3 with encryptio
   (`smbclient //localhost/<share> -A <credfile>` with the file in `/dev/shm`, deleted
   straight after) to tell a wrong password from a client-side problem.
 
+### Reaching the apps from outside the LAN (Tailscale)
+
+To use an app on the phone away from home, don't forward a router port, even with the
+router's dynamic DNS. That puts the app on the public internet: a plain-HTTP login, constant
+scanning, and every framework CVE becomes urgent, on the box that also holds the backups.
+Use Tailscale instead. Nothing opens on the router, and only your own signed-in devices can
+connect.
+
+```bash
+. /etc/os-release   # Tailscale publishes a repo per Ubuntu codename, new releases included
+curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/$VERSION_CODENAME.noarmor.gpg \
+  | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
+curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/$VERSION_CODENAME.tailscale-keyring.list \
+  | sudo tee /etc/apt/sources.list.d/tailscale.list
+sudo apt-get update && sudo apt-get install -y tailscale
+sudo tailscale up --hostname=<name> --timeout=8s   # prints a login URL, then times out
+sudo tailscale status                              # shows the same URL until someone approves
+```
+
+- **Login over SSH:** `tailscale up` blocks until the login is approved. With `--timeout` it
+  prints the URL and returns, and the pending login survives. The human opens the URL.
+- **Disable key expiry** for the server in the admin console (machine's ⋯ menu), or it
+  drops off the tailnet after 180 days. `tailscale status --json` shows `KeyExpiry` as null
+  once it's off.
+- **Keep it patched.** Its repo isn't in unattended-upgrades' origins. Add
+  `Unattended-Upgrade::Origins-Pattern:: "origin=Tailscale,codename=${distro_codename}";` in
+  its own file (e.g. `53unattended-upgrades-tailscale`), and check it with the dry run's
+  "Allowed origins".
+- **On the phone:** install the app with the same account and accept the VPN prompt. Only
+  tailnet traffic goes through it (no exit node), so the rest of the phone's traffic is
+  unchanged. With MagicDNS, `http://<name>:<port>` works. Test with WiFi off.
+- Apps need no change. Docker's published ports listen on all interfaces, the tailnet one
+  included.
+
 ### Glances → Home Assistant
 
 Beszel can't send data to HA. Its HA add-ons do the opposite: they put an agent on the HA
