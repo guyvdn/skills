@@ -602,7 +602,17 @@ Each app gets the same shape, so backups, reboots and secrets need no per-app th
     simple and fail only on a real problem.
 - **Static sites:** a small `nginx:alpine` container with the site bind-mounted read-only.
   Because `/srv/<app>` belongs to that app alone, mirroring with deletes is safe here,
-  unlike a folder shared with other projects.
+  unlike a folder shared with other projects. If the content isn't in git (e.g. a gitignored
+  photo folder), `git archive` can't ship it: mirror the working tree instead. Windows has
+  no rsync, so diff a local file list against `find <dir> -type f -printf '%P\t%s\t%T@\n'`
+  on the box by size + whole-second mtime, pipe the changed files through Windows'
+  `%SystemRoot%\System32\tar.exe -c -T <list>` into `ssh … 'sudo tar -x --no-same-owner'`
+  (call it by absolute path: Git Bash's GNU tar comes first on `PATH`), then delete what's
+  gone. Guard the delete step: refuse to remove a large share of the server's files, so an
+  empty source folder can't wipe the site.
+- **Retiring the old host:** before deleting an app's files from where it used to run,
+  search the consumers' config for the old **host:port**, not only the URL path. Another
+  server or a cast automation may be fetching the same files on a port you didn't know about.
 - **Ports:** record each one in the private `CLAUDE.md` port table before using it. Glances
   will add container sensors to HA with IP-based names; rename them like the rest.
 
