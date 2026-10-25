@@ -3,8 +3,9 @@
 Part of the [ubuntu-home-server](../SKILL.md) skill. Placeholders (`<USER>`, `<SERVER_IP>`, …) are
 listed there; the real values are in the private global `CLAUDE.md`.
 
-Unattended upgrades and reboots, restic to the SD card, and the Samba share that takes
-Home Assistant's backups off its own disk.
+Unattended upgrades and reboots, restic to the SD card plus a second repository on an SMB
+share elsewhere on the LAN, and the Samba share that takes Home Assistant's backups off its
+own disk.
 
 ## Automatic updates
 
@@ -75,6 +76,47 @@ the card, run the wrapper, check that the alert arrives, remount, run it again.
 A card in the same machine guards against SSD failure, bad updates and mistakes, but not
 against theft, fire or the laptop dying with the card inside. Add an off-site copy for data
 that really matters.
+
+## Second target: an SMB share on another device
+
+Any always-on SMB share elsewhere on the LAN (a NAS, or a USB drive on a media player such as
+an NVIDIA Shield) gives a copy that survives the laptop dying with its card inside. It's
+still in the same house, so it's not off-site. Bonus: a Windows PC that already uses the
+share can restore from it with `restic.exe -r \\<host>\<share>\<repo>` without the card.
+
+- **Give it its own repository, and back up into both directly.** Don't `restic copy` from
+  the card, or a dead card stops both. Initialise it with
+  `restic init -r /mnt/<target>/<repo> --from-repo /mnt/backup/restic --from-password-file
+  /etc/restic/password --copy-chunker-params`: same password (one secret to keep off the box),
+  same chunker, so a later `restic copy` still deduplicates. It can keep a longer history
+  than the card (e.g. 14 daily / 8 weekly / 24 monthly).
+- **Probe the dialect first:** `smbclient -N -L //<ip> --option="client min protocol=SMB3_11"
+  --option="client max protocol=SMB3_11"`. "Anonymous login successful" followed by
+  `NT_STATUS_ACCESS_DENIED` means it speaks 3.1.1 and refuses guests, which is what you want.
+  The box often can't resolve the device's name (no mDNS/NetBIOS client), so use its IP and give
+  it a DHCP reservation.
+- **Credentials:** `apt-get install cifs-utils`, then a root-only file
+  `/etc/restic/<target>-smb` (`username=…` / `password=…`, 600), written by piping the
+  clipboard over SSH so the password never appears in a transcript.
+- **Mount it only for the backup.** fstab entry with
+  `noauto,nofail,_netdev,credentials=…,vers=3.1.1,seal,uid=0,gid=0,file_mode=0600,dir_mode=0700,noperm`.
+  The job mounts it (`timeout 60 mount /mnt/<target>`) and a `trap … EXIT` unmounts it. A
+  permanent mount would show up in Glances (and so in Home Assistant) as a new disk, and a
+  device that sleeps or is unplugged would leave a dead mount behind. `seal` enforces SMB
+  encryption; check it with `grep -i encrypt /proc/fs/cifs/DebugData` while it's mounted.
+- **One target failing must not skip the other.** Put the restic steps in a function per
+  repository, run each target as `set +e; ( set -e; "$target" ) 2>&1 | tee "$log";
+  rc=${PIPESTATUS[0]}; set -e`, collect the failures, and end with
+  `echo "FAILED <target>: <last line>" >&2; exit 1`. Calling it as `( … ) || …` would silently
+  switch `set -e` off inside the subshell. The wrapper already reports the last line, so the
+  HA alert names the target with no change on the HA side.
+- **Unit:** `RequiresMountsFor=/mnt/backup` stops the whole job when the card is missing,
+  so the second target never runs. Use `WantsMountsFor=/mnt/backup` (systemd 256+); the
+  script's own `mountpoint` check reports the missing card.
+- **Prove it:** run the service once, then `ip route add blackhole <ip>/32`, run `backup-run`
+  directly (not the wrapper, which would alert the phone), expect exit 1, the card's
+  snapshot saved and `FAILED <target>: …` as the last line, then `ip route del` it. Restore a
+  file from the new repository.
 
 ## Off-box target for Home Assistant's backups (Samba)
 

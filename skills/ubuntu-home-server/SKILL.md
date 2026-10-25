@@ -1,6 +1,6 @@
 ---
 name: ubuntu-home-server
-description: 'Use when working on the headless Ubuntu home server that hosts pet projects: rebuilding, reinstalling or recovering it (install from the USB, WiFi/netplan + systemd-networkd, finding it on the LAN, pinning its IP, driving it from Windows), deploying or changing an app on it (Docker, /srv/<app>, ports), its backups (restic, SQLite hooks, the Samba share for Home Assistant backups), auto-updates and reboots, monitoring (Beszel, Glances to Home Assistant), laptop power settings, and remote access (Tailscale, T3 Code + Claude Code sessions from the phone). The actual host name, IP, user, SSID and key live in the private global CLAUDE.md, not here.'
+description: 'Use when working on the headless Ubuntu home server that hosts pet projects: rebuilding, reinstalling or recovering it (install from the USB, WiFi/netplan + systemd-networkd, finding it on the LAN, pinning its IP, driving it from Windows), deploying or changing an app on it (Docker, /srv/<app>, ports), its backups (restic to the SD card and an SMB share, SQLite hooks, the Samba share for Home Assistant backups), auto-updates and reboots, monitoring (Beszel, Glances to Home Assistant), laptop power settings, and remote access (Tailscale, T3 Code + Claude Code sessions from the phone). The actual host name, IP, user, SSID and key live in the private global CLAUDE.md, not here.'
 version: 1.1.0
 compatibility: 'Server: Ubuntu Server 24.04+/26.04 (netplan + systemd-networkd, no NetworkManager). Driven from Windows 11 with PowerShell + Git Bash OpenSSH; password-sudo scripted via Python + paramiko.'
 ---
@@ -42,7 +42,7 @@ Read only the file the task needs:
 | --- | --- |
 | [references/rebuild.md](references/rebuild.md) | Windows-side prerequisites, then §1–§9: install from the USB, find the box on the LAN, install your key, sudo over paramiko and going key-only (`scripts/keys_only.py`), the netplan WiFi fix, cloud-init, applying netplan safely, DHCP reservation, WiFi-only checkout |
 | [references/hardware-power.md](references/hardware-power.md) | Lid closed, power back on after an outage, battery charge cap, NVIDIA driver under Secure Boot, growing the root volume to the whole SSD |
-| [references/updates-backups.md](references/updates-backups.md) | unattended-upgrades with auto-reboot, restic to the SD card and its HA webhook report, the Samba share for Home Assistant's backups |
+| [references/updates-backups.md](references/updates-backups.md) | unattended-upgrades with auto-reboot, restic to the SD card and its HA webhook report, a second restic repository on an SMB share, the Samba share for Home Assistant's backups |
 | [references/deploying-apps.md](references/deploying-apps.md) | Docker install, the `/srv/<app>` shape, building on the box, healthchecks, SQLite backup hooks and excludes, static sites, retiring an old host, ports |
 | [references/remote-access.md](references/remote-access.md) | Tailscale, Tailscale Serve (one HTTPS port per app), T3 Code + Claude Code as a separate no-sudo user, GitHub token for it |
 | [references/monitoring.md](references/monitoring.md) | Beszel hub + agent, Glances REST API into Home Assistant |
