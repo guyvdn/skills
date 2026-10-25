@@ -3,7 +3,7 @@ name: lint
 
 on:
   push:
-    branches: [master]
+    branches: [main]
     paths: ['**/*.js', '**/*.mjs', 'eslint.config.mjs', 'package.json', 'package-lock.json', '.github/workflows/lint.yml']
   pull_request:
     paths: ['**/*.js', '**/*.mjs', 'eslint.config.mjs', 'package.json', 'package-lock.json', '.github/workflows/lint.yml']
