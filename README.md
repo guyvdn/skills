@@ -176,3 +176,7 @@ npm run lint
 ```
 
 The root `package.json` is repo tooling only — `npx skills add` installs skill folders, so none of it reaches an installed skill. A skill that adds browser globals or a new folder of scripts gets its own block in `eslint.config.mjs`.
+
+## Support
+
+If these skills are useful to you, you can [buy me a coffee on Ko-fi](https://ko-fi.com/guyvdn).
