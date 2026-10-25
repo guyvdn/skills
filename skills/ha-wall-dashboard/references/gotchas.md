@@ -84,7 +84,11 @@ handling while "cleaning up", and so new panels don't reintroduce them.
 - **A tile needs `grid-template-columns: minmax(0, 1fr)`**, or its single column
   shrinks to content width and the corner items float in from the edges.
 - **`el.hidden = true` doesn't hide an element whose CSS sets `display`.** Author
-  CSS beats the UA `[hidden]` rule. Use `el.style.display = 'none'`.
+  CSS beats the UA `[hidden]` rule. Use `el.style.display = 'none'`, or add
+  `.foo[hidden] { display: none; }` next to the rule that sets `display`. Worst case
+  is a full-screen overlay that fades with `opacity`: "hidden", it stays on top,
+  invisible, and swallows every touch on the dashboard. Check with
+  `document.elementFromPoint(x, y)` over a button.
 - **A unit inside a flex container centres instead of sitting on the baseline.**
   Keep value + unit spans out of `align-items: center` flex boxes.
 - **SVG `<text>` ignores `vertical-align`.** Raise a degree sign with a `<tspan dy>`.
