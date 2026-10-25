@@ -498,6 +498,12 @@ The human creates their own account at `http://<SERVER_IP>:8090` and adds a syst
 `localhost` and port `45876`. The agent's "invalid HUB_URL" warning is harmless in this
 mode, because the hub connects to the agent over SSH.
 
+For remote monitoring, publish the hub on its own Tailscale Serve port (see "More apps on
+the same name" under "Reaching the apps from outside the LAN"), e.g. `sudo tailscale serve --bg --https=8444
+http://127.0.0.1:8090`. The hub binds `0.0.0.0`, so its own port 8090 is taken on the
+tailnet IP too and plain `http://<tailnet-name>:8090` already works; the Serve port adds
+HTTPS, which lets the phone install the dashboard as an app. Check `/api/health` through it.
+
 ### Disk: use the whole SSD
 
 The Ubuntu Server installer's LVM layout gives the root volume only ~100 GB and leaves the
