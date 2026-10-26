@@ -1,7 +1,7 @@
 ---
 name: t3-code-provider-failures
-description: 'Use this skill when T3 Code shows "Provider turn failed", a Claude thread in T3 Code never answers after a message is sent, or thread titles and branch names stop being generated — especially right after restarting T3 Code or the PC, or after a Claude Code update. Covers reading T3 Code''s own logs to find which Claude Code executable a thread actually ran, the stale npm-installed Claude Code it silently falls back to, and why `npm uninstall -g` reports "up to date" without removing it.'
-version: 1.0.0
+description: 'Use this skill when T3 Code shows "Provider turn failed", a Claude thread in T3 Code never answers after a message is sent, or thread titles and branch names stop being generated — especially right after restarting T3 Code or the PC, or after a Claude Code update. Covers reading T3 Code''s own logs to find which Claude Code executable a thread actually ran, the stale npm-installed Claude Code it silently falls back to, why `npm uninstall -g` reports "up to date" without removing it, and `node`, `npm` or `npx` failing or running an old version only inside T3 Code sessions.'
+version: 1.1.0
 ---
 
 # T3 Code: "Provider turn failed"
@@ -79,6 +79,32 @@ and resend the message that failed.
 
 Removing the fallback does not stop the update race, but a session that starts mid-update now
 fails with "not found" instead of quietly running an outdated Claude, and retrying works.
+
+## The same folder shadows node, npm and npx inside T3 sessions
+
+The old prefix is not only a Claude problem. In a T3 Code session's shell, `%APPDATA%\npm`
+comes **before** the version manager on `PATH` (observed order: `%APPDATA%\npm`,
+`%LOCALAPPDATA%\Programs\nodejs`, Volta, pnpm, `~\.local\bin`, … and only then the nvm
+folder), even when the registry `PATH` puts nvm first. So anything left in the old prefix
+wins inside agent sessions while a normal terminal never sees it:
+
+- a global `node` package (`npm i -g node`) whose binary was never downloaded leaves a
+  `node` shim pointing at a missing `node_modules\node\bin\node`; then every `node` and
+  `npx` call in the session fails with "The system cannot find the path specified" or
+  `No such file or directory`;
+- an old global `npm` there silently replaces nvm's newer one.
+
+Check and clean the same way, always with `--prefix`, and dry-run first:
+
+```powershell
+npm ls -g --depth=0 --prefix "$env:APPDATA\npm"
+npm uninstall -g --prefix "$env:APPDATA\npm" node --dry-run
+```
+
+If `npm` itself is the broken one, run nvm's directly:
+`& C:\nvm4w\nodejs\node.exe C:\nvm4w\nodejs\node_modules\npm\bin\npm-cli.js <args>`. Other
+tools in the old prefix (CLIs installed there years ago) keep working once `node` resolves,
+so there is no need to empty the folder.
 
 ## Ruled out — not the cause
 
