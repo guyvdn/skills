@@ -133,6 +133,12 @@ if (-not $ProjectFolders) {
         Write-Host "  note: no project folders specified - only standard VS/JetBrains paths will be added." -ForegroundColor Yellow
     }
 } else {
+    # `powershell -File ... -ProjectFolders "D:\a","D:\b"` binds as ONE string with the quotes
+    # embedded, which Defender would store as a single path that matches nothing. Split it back
+    # out. Only quoted values are split, so a real path containing a comma is left alone.
+    $ProjectFolders = @($ProjectFolders | ForEach-Object {
+        if ($_ -match '"') { $_ -split ',' | ForEach-Object { $_.Trim().Trim('"').Trim() } } else { $_ }
+    } | Where-Object { $_ })
     foreach ($folder in $ProjectFolders) {
         if (-not (Test-Path $folder)) {
             Write-Host "  warning: path does not exist yet - adding anyway: $folder" -ForegroundColor Yellow
@@ -145,6 +151,13 @@ $existing     = @((Get-MpPreference).ExclusionPath)
 $existingProc = @((Get-MpPreference).ExclusionProcess)
 $addedPaths   = 0
 $addedProcs   = 0
+
+# An existing entry with quotes in it is the bogus single path described above, left by an
+# earlier -File run. Report it rather than removing it: removing exclusions is the user's call.
+foreach ($bad in ($existing | Where-Object { $_ -match '"' })) {
+    Write-Host "  warning: bogus exclusion (quotes inside one path, matches nothing): $bad" -ForegroundColor Yellow
+    Write-Host "           remove with: Remove-MpPreference -ExclusionPath '$bad'" -ForegroundColor Yellow
+}
 
 Write-Host ""
 Write-Host "Applying path exclusions..."

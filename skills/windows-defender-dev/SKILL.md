@@ -1,7 +1,7 @@
 ---
 name: windows-defender-dev
 description: 'Use this skill only when the user explicitly asks to configure Windows Defender exclusions for a developer machine — covers Visual Studio 2022 (v17) and 2026 (v18), VS Code, JetBrains Rider, .NET SDK, NuGet, MSBuild, SSMS, and user-supplied project folders. Idempotent, safe to re-run.'
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Windows Defender Exclusions for Developers
@@ -16,8 +16,11 @@ Before applying, ask the user:
 > **Skip folders that live on a Dev Drive.** A ReFS Dev Drive already gets Microsoft Defender
 > *performance mode* (async scanning), which is faster than nothing and still scans the files.
 > A path exclusion blocks scanning altogether and gains almost nothing on top. Check with
-> `Get-Volume | Where-Object FileSystemType -eq 'ReFS'` — see the
-> [windows-dev-drive](../windows-dev-drive/) skill. Tool paths on `C:` (below) are still worth excluding.
+> `Get-Volume | Where-Object FileSystemType -eq 'ReFS'`, then confirm it is *trusted* with
+> `fsutil devdrv query D:` (elevated) — it should print "This is a trusted developer volume"
+> and list `WdFilter` among the attached filters. An untrusted ReFS volume gets full
+> synchronous scanning. See the [windows-dev-drive](../windows-dev-drive/) skill. Tool paths
+> on `C:` (below) are still worth excluding.
 
 ## Step 2 — Run the script
 
@@ -37,15 +40,27 @@ The script is idempotent — safe to re-run, skips already-present exclusions.
 
 > `-ProjectFolders` takes an array, so it needs `-Command` rather than `-File`. With
 > `powershell -File`, `-ProjectFolders "D:\a","D:\b"` binds as a **single** string with the
-> quotes embedded, and you get one bogus exclusion path instead of two.
+> quotes embedded, and you get one bogus exclusion path instead of two. Since 1.1.0 the
+> script splits such a value back into separate paths, and warns about any existing entry
+> left by an older run; `-Command` is still the form to use.
 
 ## Step 3 — Verify
+
+Reading exclusions needs elevation too — unelevated, `ExclusionPath` returns
+`N/A: Must be an administrator to view exclusions`. From an unelevated agent shell, use
+Windows `sudo` (Windows 11 24H2+, enabled in Settings ▸ System ▸ Advanced) rather than
+elevating the whole session: `sudo pwsh -NoProfile -Command "(Get-MpPreference).ExclusionPath"`.
 
 ```powershell
 $p = Get-MpPreference
 $p.ExclusionPath
 $p.ExclusionProcess
+$p.ExclusionPath | Where-Object { $_ -match '"' }   # must print nothing
 ```
+
+An entry with quotes inside it (`"D:\a","D:\b"`) is one bogus path from an older `-File`
+run. It matches nothing, so it excludes nothing; remove it with
+`Remove-MpPreference -ExclusionPath '<the entry exactly as printed>'`.
 
 ## What the script adds
 
