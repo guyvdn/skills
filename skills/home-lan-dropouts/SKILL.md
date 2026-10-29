@@ -136,7 +136,10 @@ device-discovery-protocol-version:00030010
 The reply's first line is `HTTP/1.1 200 Ok` when awake and `HTTP/1.1 620 Server Standby` in rest
 mode; the headers carry `host-type` (`PS4`/`PS5`), `host-name`, `host-id` (its MAC) and
 `system-version`. `netwatch.py --ps-state` polls this every 2 s. A single `no-reply` between
-two `200 Ok` answers is a lost UDP packet, not a state change.
+two `200 Ok` answers is a lost UDP packet, not a state change. When the console shuts down or restarts,
+it first sends a short non-HTTP reply (logged as `unexpected-reply`), then stops answering
+discovery, and only then stops answering ping. A neighbour such as the TV going quiet a few
+seconds later usually means someone switched everything off, not a fault.
 
 ## Scripts
 

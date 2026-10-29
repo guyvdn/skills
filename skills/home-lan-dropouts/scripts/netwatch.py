@@ -38,7 +38,11 @@ def ps_state(addr):
         s.settimeout(1.5)
         try:
             s.sendto(msg, (addr, port))
-            return s.recvfrom(2048)[0].decode(errors="replace").splitlines()[0].replace("HTTP/1.1 ", "")
+            data = s.recvfrom(2048)[0]
+            if not data.startswith(b"HTTP/1.1 "):
+                # Seen while a PS5 shuts down or restarts: a short non-HTTP reply, then silence.
+                return f"unexpected-reply ({len(data)} bytes)"
+            return data.decode(errors="replace").splitlines()[0][len("HTTP/1.1 "):]
         except OSError:
             continue
         finally:
