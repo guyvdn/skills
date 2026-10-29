@@ -29,6 +29,7 @@ npx skills add guyvdn/skills
 | [t3-code-provider-failures](skills/t3-code-provider-failures/) | Fix T3 Code's "Provider turn failed" and Claude threads that never answer — read T3's provider and server logs to see which Claude Code executable a thread actually ran, remove the stale npm install it falls back to while the native `claude.exe` is mid-update, and get past `npm uninstall -g` reporting "up to date" when the copy sits under a pre-nvm prefix. |
 | [remarkable](skills/remarkable/) | Read, transcribe and summarize handwritten notebooks from a reMarkable tablet — lists the tablet over USB (10.11.99.1) or the cloud (rmapi), exports a notebook to PDF, rasterises the pages for vision OCR, and writes a transcript plus a summary of decisions, actions and unanswered questions. Includes the transcription honesty rules and why a VPN makes a plugged-in tablet unreachable. |
 | [ha-wall-dashboard](skills/ha-wall-dashboard/) | Build and maintain a Home Assistant wall-tablet dashboard — a themeable vanilla-JS web app served from HA's own `www` folder, live over the WebSocket API. A setup wizard discovers the entities, picks panels, theme (five built in, previewable on the tablet) and layout; scripts scaffold, validate the config against the live HA, deploy with cache-busting, and upgrade without trampling local edits. |
+| [home-lan-dropouts](skills/home-lan-dropouts/) | Work out why a device on a home network keeps dropping for a second or two (a console kicked from online games, a TV that stalls): a timestamped multi-target ping watch from a wired host with the router, switch neighbours and internet hops as controls, the link-up broadcast fingerprint that proves a cable or port flap, PlayStation rest-mode detection over its discovery port, and the false alarms (Google ICMP throttling, unsynced clocks) that point at the wrong culprit. |
 | [ubuntu-home-server](skills/ubuntu-home-server/) | Rebuild runbook for a headless Ubuntu Server box driven from Windows — install from the USB (keyboard-layout trap, enable SSH), find it on the LAN by SSH banner and MAC, fix the WiFi that subiquity breaks (netplan's networkd backend rejects `match:`; define by interface name), stop cloud-init reverting the fix, apply netplan without dropping your own session, bootstrap sudo over paramiko (key connect + `sudo -S`, password from the clipboard in memory), then switch to a dedicated key, passwordless sudo and no password SSH in one checked script, keep it running with the lid closed, and pin the IP via a DHCP reservation. Plus the operations reference, one file per topic: deploying Docker apps under `/srv/<app>`, restic backups with SQLite hooks and an HA webhook report, unattended upgrades with a timed reboot, Beszel and Glances → Home Assistant monitoring, and Tailscale + T3 Code agent sessions from the phone. |
 
 ## Usage
@@ -75,6 +76,8 @@ After installing, ask your AI agent:
 - *"Pull the action items out of my reMarkable notebook"*
 - *"Which notebook did I write about the migration in?"*
 - *"My reMarkable is plugged in but I can't reach 10.11.99.1"*
+- *"The PlayStation keeps disconnecting for a second, can you find out why?"*
+- *"Is it my Wi-Fi, the switch or the internet that keeps dropping?"*
 - *"Set up a Home Assistant dashboard for the tablet on my wall"*
 - *"Add the garden lights to my wall dashboard"*
 - *"My wall dashboard shows a dash instead of the temperature"*
@@ -93,6 +96,17 @@ node skills/ha-wall-dashboard/scripts/discover.mjs --project ~/wall-dashboard
 node skills/ha-wall-dashboard/scripts/check-config.mjs --project ~/wall-dashboard
 node skills/ha-wall-dashboard/scripts/deploy.mjs --project ~/wall-dashboard --to '\\homeassistant.local\config\www\wall'
 node skills/ha-wall-dashboard/scripts/scaffold.mjs --to ~/wall-dashboard --upgrade
+```
+
+Python scripts (Python 3, any OS, no admin):
+
+```bash
+# Watch a device, its switch neighbours, the router and the internet; events only on stdout
+python skills/home-lan-dropouts/scripts/netwatch.py --minutes 30 --log watch.log console=192.168.1.50 tv=192.168.1.51 router=192.168.1.1 cf=1.1.1.1 --ps-state 192.168.1.50
+python skills/home-lan-dropouts/scripts/summarize.py watch.log --min 2
+
+# Clock offset against NTP, before lining up logs from several hosts
+python skills/home-lan-dropouts/scripts/clock_offset.py
 ```
 
 ```powershell
