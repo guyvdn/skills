@@ -107,3 +107,12 @@ it lets the phone start and follow agent sessions while the dev PC is off.
   repo: a public one succeeds without any credentials and proves nothing. For anything multi-line as the agent user, copy a script over and
   run `sudo -iu claude bash script.sh`. `sudo -iu … bash -c "…"` mangles newlines and
   quoting.
+- **`gh` for the agent user:** without it, a session opens and merges PRs through raw API
+  calls. Install from GitHub's own apt repo (`cli.github.com/packages`, keyring in
+  `/etc/apt/keyrings`), not Ubuntu's `gh`, which is frozen per release. Like the Docker and
+  Tailscale repos, it isn't in unattended-upgrades' allowed origins. Log it in from the
+  token already in `~/.git-credentials`, so nothing is pasted twice:
+  `sed -n 's#^https://[^:]*:\([^@]*\)@github\.com\r\?$#\1#p' ~/.git-credentials | gh auth login --git-protocol https --insecure-storage --with-token`.
+  There's no keyring on a headless box, so the token is stored in `~/.config/gh/hosts.yml`.
+  A token renewal now means updating both files. Auto mode
+  refuses this login as persistence, so the human runs it.
