@@ -4,8 +4,8 @@ Part of the [ubuntu-home-server](../SKILL.md) skill. Placeholders (`<USER>`, `<S
 listed there; the real values are in the private global `CLAUDE.md`.
 
 Unattended upgrades and reboots, restic to the SD card plus a second repository on an SMB
-share elsewhere on the LAN, and the Samba share that takes Home Assistant's backups off its
-own disk.
+share elsewhere on the LAN, the Samba share that takes Home Assistant's backups off its
+own disk, and a share Windows PCs map as a drive letter.
 
 ## Automatic updates
 
@@ -149,3 +149,36 @@ write and delete a file) and check `sudo smbstatus -b` shows SMB3 with encryptio
 - If a freshly set password is refused from Windows, test it on the box first
   (`smbclient //localhost/<share> -A <credfile>` with the file in `/dev/shm`, deleted
   straight after) to tell a wrong password from a client-side problem.
+
+## A share for Windows PCs (mapped drive letter)
+
+The same Samba server can hold files that Windows PCs open directly: laser or CNC project
+files instead of OneDrive or Google Drive, for example. One system user and one share per
+purpose, so a leaked login opens nothing else:
+
+```bash
+sudo useradd --system --no-create-home --shell /usr/sbin/nologin <shareuser>
+sudo install -d -o <shareuser> -g <shareuser> -m 700 /srv/<share>
+sudo cp -n /etc/samba/smb.conf /etc/samba/smb.conf.bak-$(date +%F)
+printf '\n[<share>]\n   comment = <what it holds>\n   path = /srv/<share>\n   valid users = <shareuser>\n   read only = no\n   create mask = 0600\n   directory mask = 0700\n' | sudo tee -a /etc/samba/smb.conf >/dev/null
+sudo testparm -s >/dev/null && sudo smbcontrol smbd reload-config   # existing sessions stay up
+```
+
+- **The password**: generate it on the Windows side into a temp file (`umask 077`), send it
+  as SSH stdin and set it with `IFS= read -r pw || [ -n "$pw" ]; printf '%s\n%s\n' "$pw"
+  "$pw" | sudo smbpasswd -s -a <shareuser>`. The `|| [ -n "$pw" ]` matters: the file has no
+  trailing newline, so a bare `read` returns 1 and `set -e` aborts before `smbpasswd`.
+- **Store it on each PC**: `cmdkey /add:<SERVER_IP> /user:<shareuser> /pass:<pw>`, then
+  `net use F: \\<SERVER_IP>\<share> /persistent:yes`. Over SSH both must run **in the user's
+  desktop session** (an SSH login is its own logon session, and a drive mapped there never
+  shows in Explorer): use a one-shot scheduled task with `-LogonType Interactive`, see the
+  `windows-ssh-admin` skill.
+- **Hand the password over before deleting the temp file.** An agent session may not reach
+  the clipboard: `Set-Clipboard` returned without error and `Get-Clipboard` came back
+  empty. If that happens, keep the file until the user has copied it into their password
+  manager. Otherwise the only copies are the PCs' Credential Manager entries, which can't be
+  read back, and adding a PC means setting a new password everywhere.
+- **Check the connection** with `sudo smbstatus`: a Windows 11 client shows `SMB3_11` with
+  `AES-128-GCM` encryption and `AES-128-GMAC` signing.
+- Unlike the Home Assistant share, **leave it in the restic job**: project files are small
+  and dedupe well, and the box is their only copy once the cloud client is gone.
