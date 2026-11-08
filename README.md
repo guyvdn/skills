@@ -22,6 +22,9 @@ npx skills add guyvdn/skills
 | [windows-crash-dump](skills/windows-crash-dump/) | Work out why Windows crashed — bugcheck, hardware and update events without admin, getting the admin-only dump out with one UAC prompt, `!analyze -v` with the cdb that ships inside the WinDbg package, and reading the stack to tell a driver crash from a Windows bug, a hardware fault or a power loss. |
 | [windows-everything-search](skills/windows-everything-search/) | Get voidtools Everything fast again on a developer PC — audit and fix Match Path, millions of `node_modules`/`.git`/`bin`/`obj` and package-cache entries, and subst drives indexed twice; edits `Everything.ini` safely (closed first, CRLF and doubled backslashes kept, backed up), then proves it by the database size before and after. |
 | [windows-screen-off](skills/windows-screen-off/) | Turn every monitor off on demand without locking or sleeping — a one-off command and a global hotkey (default Ctrl+Alt+O) via a Start Menu shortcut, with no resident process. Covers why a too-early off message is undone by the hotkey's own key-up. |
+| [windows-ssh-admin](skills/windows-ssh-admin/) | Manage another Windows PC on the LAN from this one with no agent installed on it — enable its OpenSSH server with one admin paste (and a winget fallback when `Add-WindowsCapability` hangs), find it by SSH banner and host key, run elevated PowerShell over SSH, and get past what SSH alone can't do (mapped drives, GUI apps, OneDrive hydration, Windows Update and BIOS installs) with interactive and SYSTEM scheduled tasks. Covers cmd as the default shell, PowerShell 5.1 parse traps and why you never kill `consent.exe`. |
+| [windows-single-app-pc](skills/windows-single-app-pc/) | Turn an old laptop into a quiet PC for one program (laser, CNC, 3D printer host) — a turbo-off power plan, a SYSTEM task that blocks idle sleep while the app runs so a USB job is never cut off, silent uninstalls and the exit codes that lie, removing OneDrive without losing redirected Desktop/Documents files, clearing old family accounts safely, and a signed, rolled-back auto-update for Qt Installer Framework apps such as Falcon Design Space. |
+| [thinkpad-charge-limit](skills/thinkpad-charge-limit/) | Get a ThinkPad charging past 80 % again on Windows, or set its charge thresholds without Vantage — the per-battery registry keys, the Power Manager task that actually pushes them to the embedded controller (and that debloat scripts disable, after which Vantage claims a driver is missing), and how to tell a threshold from a weak USB-C dock. |
 | [agent-browser-cleanup](skills/agent-browser-cleanup/) | Get `agent-browser` launching again when every command dies with "Chrome exited early (exit code: 0)", and remove the Chrome trees it leaks (hundreds of processes, gigabytes of RAM) — covers the elevated-shell cause that reinstalls and Defender exclusions cannot fix, why `close --all` misses the leak, and why "parent is dead" is the wrong orphan test. |
 | [reveal-md](skills/reveal-md/) | Create, run, and export reveal-md presentations. Use when the user wants to create a new slide deck, serve a presentation locally, or export one to PDF. |
 | [interactive-reveal-deck](skills/interactive-reveal-deck/) | Build a presentation as a reveal.js deck with a designed interface and interactive demo panels instead of static bullets — per-part accent colours, a chapter rail, a jump-to-slide palette, an annotation layer, and widgets the presenter drives from the clicker. Ships the theme, the code-window tokenizer (C#, JSON, TS, YAML), six widget patterns, a scaffold script and a layout verifier, plus guidance on story, audience, slide budget and cutting repetition, drawn from the rework real decks needed. |
@@ -29,7 +32,7 @@ npx skills add guyvdn/skills
 | [t3-code-provider-failures](skills/t3-code-provider-failures/) | Fix T3 Code's "Provider turn failed" and Claude threads that never answer — read T3's provider and server logs to see which Claude Code executable a thread actually ran, remove the stale npm install it falls back to while the native `claude.exe` is mid-update, and get past `npm uninstall -g` reporting "up to date" when the copy sits under a pre-nvm prefix. |
 | [remarkable](skills/remarkable/) | Read, transcribe and summarize handwritten notebooks from a reMarkable tablet — lists the tablet over USB (10.11.99.1) or the cloud (rmapi), exports a notebook to PDF, rasterises the pages for vision OCR, and writes a transcript plus a summary of decisions, actions and unanswered questions. Includes the transcription honesty rules and why a VPN makes a plugged-in tablet unreachable. |
 | [ha-wall-dashboard](skills/ha-wall-dashboard/) | Build and maintain a Home Assistant wall-tablet dashboard — a themeable vanilla-JS web app served from HA's own `www` folder, live over the WebSocket API. A setup wizard discovers the entities, picks panels, theme (five built in, previewable on the tablet) and layout; scripts scaffold, validate the config against the live HA, deploy with cache-busting, and upgrade without trampling local edits. |
-| [ubuntu-home-server](skills/ubuntu-home-server/) | Rebuild runbook for a headless Ubuntu Server box driven from Windows — install from the USB (keyboard-layout trap, enable SSH), find it on the LAN by SSH banner and MAC, fix the WiFi that subiquity breaks (netplan's networkd backend rejects `match:`; define by interface name), stop cloud-init reverting the fix, apply netplan without dropping your own session, bootstrap sudo over paramiko (key connect + `sudo -S`, password from the clipboard in memory), then switch to a dedicated key, passwordless sudo and no password SSH in one checked script, keep it running with the lid closed, and pin the IP via a DHCP reservation. Plus the operations reference, one file per topic: deploying Docker apps under `/srv/<app>`, restic backups with SQLite hooks and an HA webhook report, unattended upgrades with a timed reboot, Beszel and Glances → Home Assistant monitoring, and Tailscale + T3 Code agent sessions from the phone. |
+| [ubuntu-home-server](skills/ubuntu-home-server/) | Rebuild runbook for a headless Ubuntu Server box driven from Windows — install from the USB (keyboard-layout trap, enable SSH), find it on the LAN by SSH banner and MAC, fix the WiFi that subiquity breaks (netplan's networkd backend rejects `match:`; define by interface name), stop cloud-init reverting the fix, apply netplan without dropping your own session, bootstrap sudo over paramiko (key connect + `sudo -S`, password from the clipboard in memory), then switch to a dedicated key, passwordless sudo and no password SSH in one checked script, keep it running with the lid closed, and pin the IP via a DHCP reservation. Plus the operations reference, one file per topic: deploying Docker apps under `/srv/<app>`, restic backups with SQLite hooks and an HA webhook report, unattended upgrades with a timed reboot, Beszel and Glances → Home Assistant monitoring, Tailscale + T3 Code agent sessions from the phone, and a Samba share Windows PCs map as a drive letter. |
 
 ## Usage
 
@@ -79,6 +82,14 @@ After installing, ask your AI agent:
 - *"Add the garden lights to my wall dashboard"*
 - *"My wall dashboard shows a dash instead of the temperature"*
 - *"Make the dashboard switch to a light theme during the day"*
+- *"Can you set up the old laptop from here, or should I install Claude on it?"*
+- *"Enable SSH on my other PC so you can manage it"*
+- *"Make this old laptop quiet and battery-friendly for my laser cutter"*
+- *"The laptop must not go to sleep while it is sending a job to the laser"*
+- *"Get rid of OneDrive on that PC but keep my files"*
+- *"Keep Falcon Design Space up to date automatically"*
+- *"My ThinkPad only charges to 79 %"*
+- *"Vantage says the battery and power driver is not installed"*
 
 ## Scripts
 
@@ -140,6 +151,16 @@ powershell -ExecutionPolicy Bypass -File skills/windows-crash-dump/scripts/Get-C
 
 # ...plus !analyze -v of a dump copied out of C:\Windows (needs WinDbg: winget install Microsoft.WinDbg)
 powershell -ExecutionPolicy Bypass -File skills/windows-crash-dump/scripts/Get-CrashReport.ps1 -DumpPath $env:TEMP\crash.dmp
+
+# ThinkPad charge thresholds: show, or set (elevated)
+powershell -ExecutionPolicy Bypass -File skills/thinkpad-charge-limit/scripts/Set-ThinkPadChargeThreshold.ps1 -Status
+powershell -ExecutionPolicy Bypass -File skills/thinkpad-charge-limit/scripts/Set-ThinkPadChargeThreshold.ps1 -Start 95 -Stop 100
+
+# Block idle sleep while one app runs, e.g. a laser or CNC host (elevated; -Uninstall to remove)
+powershell -ExecutionPolicy Bypass -File skills/windows-single-app-pc/scripts/Install-KeepAwake.ps1 -ProcessName FalconDesignSpace
+
+# On a target PC over SSH: run a script in the signed-in user's desktop session
+powershell -ExecutionPolicy Bypass -File Invoke-InDesktopSession.ps1 -ScriptPath C:\Users\me\map-drive.ps1
 
 # Display auto-dimming audit (read-only)
 powershell -ExecutionPolicy Bypass -File skills/windows-display-dimming/scripts/Test-DisplayDimming.ps1
