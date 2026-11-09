@@ -33,6 +33,7 @@ npx skills add guyvdn/skills
 | [remarkable](skills/remarkable/) | Read, transcribe and summarize handwritten notebooks from a reMarkable tablet — lists the tablet over USB (10.11.99.1) or the cloud (rmapi), exports a notebook to PDF, rasterises the pages for vision OCR, and writes a transcript plus a summary of decisions, actions and unanswered questions. Includes the transcription honesty rules and why a VPN makes a plugged-in tablet unreachable. |
 | [ha-wall-dashboard](skills/ha-wall-dashboard/) | Build and maintain a Home Assistant wall-tablet dashboard — a themeable vanilla-JS web app served from HA's own `www` folder, live over the WebSocket API. A setup wizard discovers the entities, picks panels, theme (five built in, previewable on the tablet) and layout; scripts scaffold, validate the config against the live HA, deploy with cache-busting, and upgrade without trampling local edits. |
 | [ubuntu-home-server](skills/ubuntu-home-server/) | Rebuild runbook for a headless Ubuntu Server box driven from Windows — install from the USB (keyboard-layout trap, enable SSH), find it on the LAN by SSH banner and MAC, fix the WiFi that subiquity breaks (netplan's networkd backend rejects `match:`; define by interface name), stop cloud-init reverting the fix, apply netplan without dropping your own session, bootstrap sudo over paramiko (key connect + `sudo -S`, password from the clipboard in memory), then switch to a dedicated key, passwordless sudo and no password SSH in one checked script, keep it running with the lid closed, and pin the IP via a DHCP reservation. Plus the operations reference, one file per topic: deploying Docker apps under `/srv/<app>`, restic backups with SQLite hooks and an HA webhook report, unattended upgrades with a timed reboot, Beszel and Glances → Home Assistant monitoring, Tailscale + T3 Code agent sessions from the phone, and a Samba share Windows PCs map as a drive letter. |
+| [pc-game-graphics](skills/pc-game-graphics/) | Make a PC game look better by editing its config instead of describing menus: a read-only audit (install folder, engine, shipped DLSS/XeSS/FSR DLLs and versions, config files, GPU, monitor EDID modes), Unreal enum values read straight from the shipping exe, a dated backup, edits with the game closed and a line diff to prove only the intended keys changed. Covers what actually improves the image (DLAA, Lumen + ray reconstruction, lens effects off), what to leave alone (frame gen, weak HDR) and the traps (CRLF lost to `sed -i`, enum order stored reversed, legacy keys, a monitor stuck at 60 Hz by its cable). Per-game notes, starting with Everspace 2. |
 
 ## Usage
 
@@ -90,6 +91,8 @@ After installing, ask your AI agent:
 - *"Keep Falcon Design Space up to date automatically"*
 - *"My ThinkPad only charges to 79 %"*
 - *"Vantage says the battery and power driver is not installed"*
+- *"I think the graphics in Everspace 2 can be better, can you configure it?"*
+- *"Turn on DLAA and Lumen in this game for me"*
 
 ## Scripts
 
@@ -167,6 +170,12 @@ powershell -ExecutionPolicy Bypass -File skills/windows-display-dimming/scripts/
 
 # Turn off auto-dimming now, and keep it off across feature updates
 powershell -ExecutionPolicy Bypass -File skills/windows-display-dimming/scripts/Disable-AdaptiveDimming.ps1 -RestartAdapter -InstallTask
+
+# Game graphics audit: install folder, engine, upscaler DLLs, config files, GPU, monitor modes (read-only)
+powershell -ExecutionPolicy Bypass -File skills/pc-game-graphics/scripts/Find-GameConfig.ps1 -Name 'Everspace|ES2'
+
+# Valid values of an Unreal game's settings enums, read from its exe (read-only)
+powershell -ExecutionPolicy Bypass -File skills/pc-game-graphics/scripts/Get-UEEnums.ps1 -Exe '<path>\ES2-Win64-Shipping.exe' -Pattern 'Upscaler|GlobalIllumination'
 
 # Global hotkey (Ctrl+Alt+O) that turns off every monitor (no admin needed; -Uninstall to remove)
 powershell -ExecutionPolicy Bypass -File skills/windows-screen-off/scripts/Install-ScreenOffShortcut.ps1
