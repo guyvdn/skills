@@ -1,7 +1,7 @@
 ---
 name: t3-code-copilot
-description: 'Use this skill when someone wants to use GitHub Copilot CLI inside T3 Code, add Copilot (or any other ACP agent) as a T3 Code provider, or run Copilot CLI under a second GitHub account (a work, client or Enterprise Managed User account) without disturbing the account `gh` or another Copilot login uses. Covers adding Copilot as a local ACP command, the provider instance shape in T3''s settings.json, isolating the login with COPILOT_HOME, the token variables that silently override it, what the provider''s "Available" status and "Sign in" button do and do not mean, and how to verify which account a thread really uses.'
-version: 1.0.0
+description: 'Use this skill when someone wants to use GitHub Copilot CLI inside T3 Code, add Copilot (or any other ACP agent) as a T3 Code provider, or run Copilot CLI under a second GitHub account (a work, client or Enterprise Managed User account) without disturbing the account `gh` or another Copilot login uses. Covers adding Copilot as a local ACP command, the provider instance shape in T3''s settings.json, isolating the login with COPILOT_HOME, the token variables that silently override it, what the provider''s "Available" status and "Sign in" button do and do not mean, how to verify which account a thread really uses, and why an MCP server works in the terminal but not in T3 or is "blocked by policy".'
+version: 1.1.0
 ---
 
 # GitHub Copilot CLI in T3 Code, on a chosen account
@@ -124,6 +124,22 @@ Get-Content "$HOME\.copilot\config.json"        # the default home: unchanged
   most likely means the account has no Copilot seat.
 - Before that first thread, T3's logs didn't mention the new instance, so they can't confirm
   anything until a thread has run.
+
+## MCP servers
+
+- Copilot loads MCP servers itself; T3 is not involved. User servers live in
+  **`<COPILOT_HOME>/mcp-config.json`**, so they are per home: a server added with a plain
+  `copilot mcp add` lands in `~/.copilot` and the T3 instance never sees it. Add it with the same
+  home: `$env:COPILOT_HOME = "$HOME\.copilot-work"; copilot mcp add --transport http <name> <url>`.
+  Workspace servers (`.mcp.json` or `.github/mcp.json` in the repo) load in any home, once
+  that home trusts the folder. `.vscode/mcp.json` is not read.
+- Sign in to an OAuth server once from an interactive `copilot` run with that home
+  (`/mcp auth <name>`), not from a T3 thread. Don't count on a sign-in made under another home.
+- **The org's Copilot policy can block every third-party server** for that seat: *"Third-party MCP
+  servers are disabled by your organization's Copilot policy"* or *"blocked by policy: '<name>'
+  (Could not verify server against any configured registry)"*. Nothing local fixes that. Either an
+  org admin allows MCP or adds the server to its registry, or a skill calls the service's REST API
+  instead (seen 2026-11-10).
 
 ## Known issue
 
