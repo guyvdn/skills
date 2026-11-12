@@ -1,7 +1,7 @@
 ---
 name: windows-perf
-description: 'Use this skill only when the user explicitly asks why a Windows PC is slow, to diagnose CPU spikes, fix Windows performance issues, disable telemetry services, clean up startup items, or work out why a laptop fan never stops on Windows.'
-version: 1.4.0
+description: 'Use this skill only when the user explicitly asks why a Windows PC is slow, to diagnose CPU spikes, fix Windows performance issues, disable telemetry services, clean up startup items, stop an app that keeps starting at boot after being disabled in Startup Apps (e.g. a VPN client that is only needed occasionally), or work out why a laptop fan never stops on Windows.'
+version: 1.5.0
 ---
 
 # Windows Performance Tuning
@@ -116,6 +116,7 @@ A handful per 10s is normal. Dozens per second is the finding.
 |---|---|
 | Name the tab or command behind a busy browser, `node` or `dotnet` | [references/host-processes.md](references/host-processes.md) |
 | Disable a service, or run the cleanup script (services and startup items it touches) | [references/cleanup.md](references/cleanup.md) |
+| Stop an app that still starts at boot after being disabled in Startup Apps (a vendor service or watchdog launches it), and make it start on demand — includes Check Point VPN | [references/on-demand-apps.md](references/on-demand-apps.md) |
 | Work out why the fan never stops — background load vs turbo, idle WSL/Kubernetes VM, disabling turbo | [references/fan-and-thermals.md](references/fan-and-thermals.md) |
 | Trust a counter, a thermal zone or a frequency reading | [references/gotchas.md](references/gotchas.md) |
 
