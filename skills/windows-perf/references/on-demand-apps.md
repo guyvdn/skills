@@ -60,11 +60,15 @@ Traps:
   `Get-NetAdapter | ? InterfaceDescription -match 'Check Point'`. `Disconnected` is safe to stop.
 - **`TracSrvWrapper` takes ~45 s to stop.** `Stop-Service` prints a "Waiting for
   service…" warning for that long. It is not hung.
-- **Services started once stay running through sleep and hibernate, and the watchdog
-  reopens the GUI on every wake, so the eID prompt looks like a "startup" again.** On a
-  laptop that only sleeps, *still starting at startup* usually means the services were
-  started earlier and never stopped. Check that the start type is still `Manual`, then
-  compare when the process was created with `LastBootUpTime`. To see who launched it,
+- **Services started once stay running through sleep, hibernate *and* a Fast Startup
+  "shut down", and the watchdog reopens the GUI on every wake, so the eID prompt looks
+  like a "startup" again.** Fast Startup (`HKLM\SYSTEM\CurrentControlSet\Control\Session
+  Manager\Power\HiberbootEnabled = 1`) hibernates session 0, so services survive a
+  shutdown. Check `Kernel-Boot` event 27 in the System log: boot type `0x1` = restored
+  from Fast Startup, `0x0` = cold boot. `LastBootUpTime` only moves on a cold boot or a
+  Restart. Fix: set `HiberbootEnabled` to `0` (elevated), so every shutdown is a real one.
+  Before blaming the start type, check it is still `Manual` and compare when the process
+  was created with `LastBootUpTime`. To see who launched it,
   read the UserAssist key (`HKCU\...\Explorer\UserAssist\{GUID}\Count`, ROT13-encoded
   names, last-run FILETIME at byte offset 60); it records Start-menu shortcut launches.
 - **A Check Point update or reinstall may set the services back to Auto.** If the eID
