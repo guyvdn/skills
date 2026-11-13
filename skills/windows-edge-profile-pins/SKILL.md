@@ -14,7 +14,17 @@ pwsh -File scripts/New-EdgeProfileShortcuts.ps1 -List
 
 # Write "Edge - <name>.lnk" to the desktop for every profile
 pwsh -File scripts/New-EdgeProfileShortcuts.ps1
+
+# Only one profile (display name or folder, wildcards allowed), e.g. after adding it
+pwsh -File scripts/New-EdgeProfileShortcuts.ps1 -Name Work
 ```
+
+**Adding a profile:** have the user create it in Edge's UI (profile avatar > **Other profiles** >
+**Set up new work profile** / **Add profile**), sign in, and only then run the script. Edge writes
+the display name and `Edge Profile.ico` after sign-in. Do **not** create one by launching
+`msedge --profile-directory="Profile N"` with an unused folder. That opens a profile, but Edge
+deleted it again before sign-in finished: it showed up under `profile.profile_basenames_deleted`
+in `Local State`, the folder was gone, and the next UI-created profile skipped that number.
 
 Then the **user** pins them. Windows has no supported pin API, so:
 

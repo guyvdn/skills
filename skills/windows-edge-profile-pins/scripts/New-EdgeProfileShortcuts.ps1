@@ -11,9 +11,13 @@
 
 .PARAMETER List
   Only list the profiles (folder, name, icon present) and write nothing.
+
+.PARAMETER Name
+  Only write shortcuts for profiles whose display name or folder matches (wildcards allowed).
+  Use it after adding one profile, so existing desktop shortcuts are left alone.
 #>
 [CmdletBinding()]
-param([switch]$List)
+param([switch]$List, [string]$Name = '*')
 
 $userData = Join-Path $env:LOCALAPPDATA 'Microsoft\Edge\User Data'
 $exe = @(
@@ -33,6 +37,8 @@ $profiles = foreach ($p in $state.profile.info_cache.GetEnumerator()) {
         Icon   = if (Test-Path $ico) { $ico } else { $null }
     }
 }
+$profiles = @($profiles | Where-Object { $_.Name -like $Name -or $_.Folder -like $Name })
+if (-not $profiles) { throw "No Edge profile matches '$Name'." }
 
 if ($List) { $profiles | Format-Table -AutoSize; return }
 
