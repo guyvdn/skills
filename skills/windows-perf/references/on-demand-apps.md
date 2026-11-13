@@ -60,5 +60,12 @@ Traps:
   `Get-NetAdapter | ? InterfaceDescription -match 'Check Point'`. `Disconnected` is safe to stop.
 - **`TracSrvWrapper` takes ~45 s to stop.** `Stop-Service` prints a "Waiting for
   service…" warning for that long. It is not hung.
+- **Services started once stay running through sleep and hibernate, and the watchdog
+  reopens the GUI on every wake, so the eID prompt looks like a "startup" again.** On a
+  laptop that only sleeps, *still starting at startup* usually means the services were
+  started earlier and never stopped. Check that the start type is still `Manual`, then
+  compare when the process was created with `LastBootUpTime`. To see who launched it,
+  read the UserAssist key (`HKCU\...\Explorer\UserAssist\{GUID}\Count`, ROT13-encoded
+  names, last-run FILETIME at byte offset 60); it records Start-menu shortcut launches.
 - **A Check Point update or reinstall may set the services back to Auto.** If the eID
   prompt returns after an update, reapply the fix.
