@@ -66,9 +66,12 @@ Each step costs less picture than the next:
 
 1. **DLAA → DLSS Quality.** About 45% of the pixels, roughly a third less GPU work. With
    the DLSS 4 transformer model the difference is hard to see at 1440p and above.
-2. **GI / Lumen quality Epic → High** (`sg.GlobalIlluminationQuality=2`). Lumen stays on.
-   The game may rewrite `sg.*` from its own menu settings, so re-read the ini after one
-   session to see if it stuck.
+2. **GI / Lumen quality Epic → High**, but only when the game's menu has its own option for
+   it. Many games derive the `sg.*` scalability groups from their own presets and write
+   them back on exit, so a hand edit of `sg.GlobalIlluminationQuality` is silently undone
+   (Everspace 2 does this). After one session, re-read the ini. If the value reverted, skip
+   this step rather than lower the whole preset. Forcing it through an `Engine.ini`
+   `[SystemSettings]` override is possible, but it's hidden tinkering: offer it, don't do it.
 3. **A frame cap a little below the refresh rate** (e.g. 75 on a 100 Hz panel with
    G-SYNC/FreeSync). Smoother than 60, and the GPU doesn't chase 100.
 4. Outside the game: a GPU power limit around 80% (`nvidia-smi -pl`, admin, resets at
