@@ -96,24 +96,46 @@ Get-CimInstance Win32_VideoController | ForEach-Object {
     '{0} (driver {1}) -- {2}' -f $_.Name, $_.DriverVersion, $mode
 }
 
-Section 'Monitors (EDID)'
-$ids = Get-CimInstance -Namespace root\wmi WmiMonitorID
-$modes = Get-CimInstance -Namespace root\wmi WmiMonitorListedSupportedSourceModes
-foreach ($id in $ids) {
-    $dec = { param($a) ($a | Where-Object { $_ -ne 0 } | ForEach-Object { [char]$_ }) -join '' }
-    $name = '{0} {1}' -f (& $dec $id.ManufacturerName), (& $dec $id.UserFriendlyName)
-    $m = $modes | Where-Object InstanceName -eq $id.InstanceName
-    $list = $m.MonitorSourceModes | ForEach-Object {
-        [pscustomobject]@{ W = $_.HorizontalActivePixels; H = $_.VerticalActivePixels
-            Hz = [math]::Round($_.VerticalRefreshRateNumerator / [math]::Max(1, $_.VerticalRefreshRateDenominator)) }
-    } | Sort-Object { $_.W * $_.H }, Hz -Descending
-    $top = $list | Select-Object -First 1
-    "$name"
-    if ($top) {
-        $atNative = ($list | Where-Object { $_.W -eq $top.W -and $_.H -eq $top.H } | ForEach-Object Hz | Sort-Object -Unique -Descending) -join ', '
-        $maxHz = ($list | Measure-Object Hz -Maximum).Maximum
-        "  native $($top.W)x$($top.H), listed refresh at native: $atNative Hz; highest listed anywhere: $maxHz Hz"
-    }
+Section 'Displays'
+# Connection type per monitor (WmiMonitorConnectionParams.VideoOutputTechnology)
+$tech = @{ 0 = 'VGA'; 4 = 'DVI'; 5 = 'HDMI'; 10 = 'DisplayPort'; 11 = 'DisplayPort (embedded)'; 16 = 'virtual/indirect' }
+$conn = @{}
+Get-CimInstance -Namespace root\wmi WmiMonitorConnectionParams | ForEach-Object {
+    $conn[$_.InstanceName] = if ($tech.ContainsKey([int]$_.VideoOutputTechnology)) { $tech[[int]$_.VideoOutputTechnology] } else { "type $($_.VideoOutputTechnology)" }
 }
-'Note: the EDID list is what this connection advertises. If the panel is rated higher than the'
-'native-resolution refresh shown here, suspect the cable/port (often HDMI) before Windows settings.'
+Get-CimInstance -Namespace root\wmi WmiMonitorID | ForEach-Object {
+    $name = (($_.UserFriendlyName | Where-Object { $_ -ne 0 } | ForEach-Object { [char]$_ }) -join '')
+    "monitor: $name, connected over $($conn[$_.InstanceName])"
+}
+
+# The modes Windows actually offers. Do NOT use WmiMonitorListedSupportedSourceModes for
+# this: it lists only the EDID's base-block modes and misses high-refresh timings kept in
+# extension blocks (a 100 Hz ultrawide on DisplayPort showed only 60 Hz there).
+Add-Type -TypeDefinition @'
+using System; using System.Runtime.InteropServices; using System.Collections.Generic;
+public static class GcDisplayModes {
+  [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)]
+  struct DEVMODE { [MarshalAs(UnmanagedType.ByValTStr,SizeConst=32)] public string dmDeviceName; public short dmSpecVersion, dmDriverVersion, dmSize, dmDriverExtra; public int dmFields; public int dmPositionX, dmPositionY; public int dmDisplayOrientation, dmDisplayFixedOutput; public short dmColor, dmDuplex, dmYResolution, dmTTOption, dmCollate; [MarshalAs(UnmanagedType.ByValTStr,SizeConst=32)] public string dmFormName; public short dmLogPixels; public int dmBitsPerPel, dmPelsWidth, dmPelsHeight, dmDisplayFlags, dmDisplayFrequency, dmICMMethod, dmICMIntent, dmMediaType, dmDitherType, dmReserved1, dmReserved2, dmPanningWidth, dmPanningHeight; }
+  [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)]
+  struct DISPLAY_DEVICE { public int cb; [MarshalAs(UnmanagedType.ByValTStr,SizeConst=32)] public string DeviceName; [MarshalAs(UnmanagedType.ByValTStr,SizeConst=128)] public string DeviceString; public int StateFlags; [MarshalAs(UnmanagedType.ByValTStr,SizeConst=128)] public string DeviceID; [MarshalAs(UnmanagedType.ByValTStr,SizeConst=128)] public string DeviceKey; }
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern bool EnumDisplayDevices(string d, int i, ref DISPLAY_DEVICE dd, int f);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern bool EnumDisplaySettingsEx(string d, int i, ref DEVMODE m, int f);
+  public static List<string> Get() { var r = new List<string>();
+    for (int i = 0; ; i++) {
+      var dd = new DISPLAY_DEVICE(); dd.cb = Marshal.SizeOf(dd);
+      if (!EnumDisplayDevices(null, i, ref dd, 0)) break;
+      if ((dd.StateFlags & 1) == 0) continue;   // not attached to the desktop
+      var cur = new DEVMODE(); cur.dmSize = (short)Marshal.SizeOf(cur); EnumDisplaySettingsEx(dd.DeviceName, -1, ref cur, 0);
+      var hz = new SortedSet<int>();
+      for (int j = 0; ; j++) { var m = new DEVMODE(); m.dmSize = (short)Marshal.SizeOf(m); if (!EnumDisplaySettingsEx(dd.DeviceName, j, ref m, 0)) break;
+        if (m.dmPelsWidth == cur.dmPelsWidth && m.dmPelsHeight == cur.dmPelsHeight) hz.Add(m.dmDisplayFrequency); }
+      int max = 0; foreach (var h in hz) max = h;
+      r.Add(string.Format("{0} on {1}: {2}x{3} @ {4} Hz now; offered at this resolution: {5} Hz{6}",
+        dd.DeviceName, dd.DeviceString, cur.dmPelsWidth, cur.dmPelsHeight, cur.dmDisplayFrequency, string.Join(", ", hz),
+        max > cur.dmDisplayFrequency + 1 ? "   <-- running below the highest offered rate" : ""));
+    }
+    return r; } }
+'@
+[GcDisplayModes]::Get()
+"Hz shown as 59/60 is the same 59.94/60 Hz timing. If the panel's rated refresh isn't offered at"
+"native resolution at all, then suspect the cable/port (HDMI version, DP 1.1 OSD setting)."
