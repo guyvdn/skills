@@ -19,7 +19,8 @@ only after a backup and with the game closed.
   powershell -ExecutionPolicy Bypass -File scripts/Find-GameConfig.ps1 -Name '<Full name>|<CodeName>'
   ```
   It prints the install folder, engine, shipped upscaler DLLs and versions, config file
-  candidates, GPUs, the monitor model and the modes its EDID advertises, and whether the game
+  candidates, GPUs, each monitor's connection type and the refresh rates Windows offers it,
+  and whether the game
   is running. Unreal config folders use the **project code name**, not the store name
   (Everspace 2 → `ES2`). If nothing matches, rerun with the project folder name it printed.
 - [ ] 2. **Read the whole config** before deciding anything. Note what is already maxed so you
@@ -57,6 +58,22 @@ Usually leave alone, and say why in the report:
 - **Dynamic resolution**: keep it off when using DLAA. It undoes the point.
 - Gamma, FOV and controls: not image quality.
 
+## Loud fans: the middle ground
+
+Maxing image quality loads the GPU to its power limit, even when VSync caps the frame rate
+(the work per frame goes up). If the user then finds the fans too loud, cut in this order.
+Each step costs less picture than the next:
+
+1. **DLAA → DLSS Quality.** About 45% of the pixels, roughly a third less GPU work. With
+   the DLSS 4 transformer model the difference is hard to see at 1440p and above.
+2. **GI / Lumen quality Epic → High** (`sg.GlobalIlluminationQuality=2`). Lumen stays on.
+   The game may rewrite `sg.*` from its own menu settings, so re-read the ini after one
+   session to see if it stuck.
+3. **A frame cap a little below the refresh rate** (e.g. 75 on a 100 Hz panel with
+   G-SYNC/FreeSync). Smoother than 60, and the GPU doesn't chase 100.
+4. Outside the game: a GPU power limit around 80% (`nvidia-smi -pl`, admin, resets at
+   reboot) costs about 5% performance with much less heat. Offer it, don't apply it unasked.
+
 ## Gotchas
 
 - **The game rewrites its config on exit.** Edit while it runs and your changes are lost.
@@ -82,10 +99,16 @@ Usually leave alone, and say why in the report:
   `Documents\My Games` or `Saved Games`.
 - **Steam Cloud may sync config files.** If a change reverts on launch, look under
   `Steam\userdata\<id>\<appid>\remote`.
-- **Windows can run the monitor below its rated refresh rate.** `Win32_VideoController`
-  showed 59 Hz on a 100 Hz panel. If the EDID lists only 60 Hz at native resolution, the
-  connection is the limit (often HDMI), not a Windows setting. Report it; don't change
-  display settings unasked.
+- **Windows can run the monitor below its rated refresh rate.** A 100 Hz panel on
+  DisplayPort sat at 60 Hz for months. The audit's *Displays* section shows the connection
+  type, the current rate and every rate Windows offers at that resolution, and flags a
+  monitor running below the highest one. Judge by that list only. `WmiMonitorListedSupportedSourceModes`
+  reads only the EDID's base block, misses high-refresh timings stored in extension blocks
+  (it listed 60 Hz only for that same monitor), and led to a wrong "your cable is the
+  limit" diagnosis. Blame the cable/port only when the rated refresh is missing from the
+  offered list. Report it, and change the display mode only after the user agrees.
+  Switching it raises the frame rate VSync allows, and so the GPU load and fan noise
+  (see *Loud fans*).
 - **Game logs may not exist.** Shipping builds often write no `<Project>.log`, so you can't
   read the active RHI or upscaler from logs. The DLLs and the exe are the evidence.
 
